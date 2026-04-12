@@ -61,10 +61,22 @@ def is_numbered_issue(filename: str) -> bool:
     return bool(re.search(r'0\d|00\d', filename))
 
 
+def extract_issue_number(filename: str) -> int | None:
+    """Extract the issue number from a filename. Returns int or None."""
+    # Match patterns like: 001, #001, (001), 01, #01, etc.
+    m = re.search(r'(?:#|\()?(\d{1,3})(?:\)|(?:\s*\(of|\s|$))', filename)
+    if m:
+        try:
+            return int(m.group(1))
+        except (ValueError, IndexError):
+            return None
+    return None
+
+
 def get_next_volume_number(folder_path: str, series: str) -> int:
-    """Scan folder for existing {series} vNN.cbz files and return max+1."""
+    """Scan folder for existing {series} vNN.cbz/.cbr files and return max+1."""
     escaped = re.escape(series)
-    pattern = re.compile(r'^' + escaped + r'.*\bv(\d+)\b.*\.cbz$', re.IGNORECASE)
+    pattern = re.compile(r'^' + escaped + r'.*\bv(\d+)\b.*\.(?:cbz|cbr)$', re.IGNORECASE)
     max_vol = 0
     try:
         for f in os.listdir(folder_path):
@@ -74,6 +86,57 @@ def get_next_volume_number(folder_path: str, series: str) -> int:
     except OSError:
         pass
     return max_vol + 1
+
+
+def has_any_volume(folder_path: str, series: str) -> bool:
+    """Check if any volume of a series exists in folder."""
+    escaped = re.escape(series)
+    pattern = re.compile(r'^' + escaped + r'.*\bv(\d+)\b.*\.(?:cbz|cbr)$', re.IGNORECASE)
+    try:
+        for f in os.listdir(folder_path):
+            if pattern.match(f):
+                return True
+    except OSError:
+        pass
+    return False
+
+
+def is_redundant_with_last_volume(files: list[str], next_vol: int) -> bool:
+    """
+    Check if individual files are redundant (same issues that were in last volume).
+    Logic: if v01 exists (next_vol=2) and lowest issue is 001-004, likely redundant.
+    If lowest issue is 005+, they're new issues for v02 (ready state).
+    """
+    if next_vol <= 1:
+        return False  # No volume exists yet
+
+    issue_numbers = []
+    for f in files:
+        num = extract_issue_number(f)
+        if num is not None:
+            issue_numbers.append(num)
+
+    if not issue_numbers:
+        return False
+
+    min_issue = min(issue_numbers)
+
+    # If v01 exists (next_vol=2) and files start from 001-004, they're redundant
+    if next_vol == 2 and min_issue <= 4:
+        return True
+
+    # For v02 exists (next_vol=3): v02 likely covers 005-008, so redundant if min <= 8
+    if next_vol == 3 and min_issue <= 8:
+        return True
+
+    # General pattern: if min issue falls within previous volume range, it's redundant
+    # Each volume ~4-8 issues, so rough check
+    if next_vol > 3:
+        expected_max_of_last = (next_vol - 1) * 4 + 4
+        if min_issue <= expected_max_of_last:
+            return True
+
+    return False
 
 
 # ── Scan logic ──────────────────────────────────────────────────────────────
@@ -138,6 +201,8 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
             cbz_final = os.path.join(folder_path, outname + '.cbz')
             if os.path.exists(cbz_final):
                 status = 'exists'
+            elif is_redundant_with_last_volume(files, next_vol):
+                status = 'redundant'
             elif n == 1:
                 status = 'single'
             else:

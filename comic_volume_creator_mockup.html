@@ -450,6 +450,7 @@
   .status-ready    { background: #1b5e20; color: #a5d6a7; }
   .status-exists   { background: #0d47a1; color: #90caf9; }
   .status-single   { background: #f57f17; color: #fff9c4; }
+  .status-redundant { background: #e65100; color: #ffe0b2; }
   .status-skipped  { background: #4a148c; color: #e1bee7; }
 
   /* ── Output name cell ── */
@@ -1013,7 +1014,7 @@
       <div class="help-section">
         <h3>Filters</h3>
         <ul>
-          <li><strong>Status Filter:</strong> Ready (Y/M) | CBZ exists | Single file</li>
+          <li><strong>Status Filter:</strong> Ready (Y/M) | CBZ exists | Redundant | Single file</li>
           <li><strong>Flag Filter:</strong> Y | S | M | All flags</li>
           <li><strong>Search:</strong> Type series name to find matches</li>
         </ul>
@@ -1170,6 +1171,7 @@
         <option value="all">All statuses</option>
         <option value="ready">Ready (Y / M)</option>
         <option value="exists">CBZ exists</option>
+        <option value="redundant">Redundant</option>
         <option value="single">Single file</option>
       </select>
       <select class="filter-select" onchange="filterTable()" id="flag-filter">
@@ -1367,10 +1369,11 @@ let isDryRunMode   = false;         // true if last console output was from dry 
 // ── Render ─────────────────────────────────────────────────────────────────
 function statusBadge(s) {
   const map = {
-    ready:  '<span class="status status-ready">Ready</span>',
-    small:  '<span class="status status-single">Small</span>',
-    exists: '<span class="status status-exists">CBZ exists</span>',
-    single: '<span class="status status-skipped">Single</span>',
+    ready:     '<span class="status status-ready">Ready</span>',
+    small:     '<span class="status status-single">Small</span>',
+    exists:    '<span class="status status-exists">CBZ exists</span>',
+    redundant: '<span class="status status-redundant">Redundant</span>',
+    single:    '<span class="status status-skipped">Single</span>',
   };
   return map[s] || s;
 }
@@ -1387,6 +1390,7 @@ function renderTable() {
     if (currentFilter !== 'all') {
       if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
       if (currentFilter === 'exists' && r.status !== 'exists') return false;
+      if (currentFilter === 'redundant' && r.status !== 'redundant') return false;
       if (currentFilter === 'single' && r.status !== 'single') return false;
     }
     if (currentFlagFilter !== 'all' && r.flag !== currentFlagFilter) return false;
@@ -1463,6 +1467,7 @@ function expandAll() {
     if (currentFilter !== 'all') {
       if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
       if (currentFilter === 'exists' && r.status !== 'exists') return false;
+      if (currentFilter === 'redundant' && r.status !== 'redundant') return false;
       if (currentFilter === 'single' && r.status !== 'single') return false;
     }
     if (currentFlagFilter !== 'all' && r.flag !== currentFlagFilter) return false;
@@ -1485,12 +1490,34 @@ function toggleSelect(id) {
 }
 
 function selectAll() {
-  data.forEach(r => selected.add(r.id));
+  const rows = data.filter(r => {
+    if (currentFilter !== 'all') {
+      if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
+      if (currentFilter === 'exists' && r.status !== 'exists') return false;
+      if (currentFilter === 'redundant' && r.status !== 'redundant') return false;
+      if (currentFilter === 'single' && r.status !== 'single') return false;
+    }
+    if (currentFlagFilter !== 'all' && r.flag !== currentFlagFilter) return false;
+    if (currentSearch && !r.series.toLowerCase().includes(currentSearch.toLowerCase())) return false;
+    return true;
+  });
+  rows.forEach(r => selected.add(r.id));
   renderTable();
 }
 
 function deselectAll() {
-  selected.clear();
+  const rows = data.filter(r => {
+    if (currentFilter !== 'all') {
+      if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
+      if (currentFilter === 'exists' && r.status !== 'exists') return false;
+      if (currentFilter === 'redundant' && r.status !== 'redundant') return false;
+      if (currentFilter === 'single' && r.status !== 'single') return false;
+    }
+    if (currentFlagFilter !== 'all' && r.flag !== currentFlagFilter) return false;
+    if (currentSearch && !r.series.toLowerCase().includes(currentSearch.toLowerCase())) return false;
+    return true;
+  });
+  rows.forEach(r => selected.delete(r.id));
   renderTable();
 }
 
