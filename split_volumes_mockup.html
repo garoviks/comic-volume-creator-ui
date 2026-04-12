@@ -1,0 +1,607 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Split Volumes Mockup — Comic Volume Creator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #121212;
+    color: #e0e0e0;
+    padding: 24px;
+    line-height: 1.6;
+  }
+
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    font-size: 1.4rem;
+    color: #e94560;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 24px;
+  }
+
+  /* ── Table styling ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #1e1e1e;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 32px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  }
+
+  th {
+    background: #2c2c2c;
+    padding: 9px 12px;
+    text-align: left;
+    color: #e0e0e0;
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #2a2a2a;
+    vertical-align: middle;
+  }
+
+  tr:hover td { background: #252525; }
+
+  /* ── Main row (series) ── */
+  tr.series-row td:first-child {
+    width: 30px;
+    text-align: center;
+  }
+
+  .series-name {
+    font-weight: 600;
+    color: #e0e0e0;
+  }
+
+  .files-count {
+    color: #a8dadc;
+    font-weight: 600;
+  }
+
+  .flag-M {
+    display: inline-block;
+    background: #e65100;
+    color: #ffcc80;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .status-ready {
+    display: inline-block;
+    background: #1b5e20;
+    color: #a5d6a7;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.73rem;
+    font-weight: 600;
+  }
+
+  /* ── Expand button ── */
+  .expand-btn {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    transition: transform 0.15s;
+  }
+
+  .expand-btn.open { transform: rotate(90deg); color: #a8dadc; }
+
+  /* ── Expanded split section ── */
+  tr.split-expanded td {
+    background: #1a1a2e;
+    padding: 0;
+  }
+
+  .split-panel {
+    padding: 16px 20px;
+    display: flex;
+    gap: 20px;
+  }
+
+  .split-files {
+    flex: 1;
+  }
+
+  .split-files-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #888;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    margin-bottom: 4px;
+    background: #1e1e2e;
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+
+  .file-item input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: #e94560;
+    width: 14px;
+    height: 14px;
+  }
+
+  .file-name {
+    flex: 1;
+    font-family: monospace;
+    color: #7fb3b3;
+    font-size: 0.78rem;
+  }
+
+  .file-volume {
+    background: #0f3460;
+    border: 1px solid #0f3460;
+    color: #a8dadc;
+    padding: 3px 6px;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    min-width: 40px;
+    text-align: center;
+    font-family: monospace;
+  }
+
+  .file-volume.unassigned {
+    background: #2a2a3e;
+    color: #888;
+    border-color: #555;
+  }
+
+  /* ── Volume assignment panel ── */
+  .split-control {
+    width: 200px;
+  }
+
+  .control-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #888;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .selected-files-list {
+    background: #1e1e2e;
+    border: 1px solid #0f3460;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 10px;
+    font-size: 0.75rem;
+    color: #a8dadc;
+    line-height: 1.6;
+    min-height: 60px;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .selected-files-list.empty {
+    color: #666;
+  }
+
+  .volume-input-group {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .volume-input-group input {
+    flex: 1;
+    background: #2a2a3e;
+    color: #a8dadc;
+    border: 1px solid #0f3460;
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .volume-input-group input:focus {
+    outline: none;
+    border-color: #a8dadc;
+  }
+
+  .volume-input-group button {
+    background: #0f3460;
+    border: 1px solid #0f3460;
+    color: #a8dadc;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: background 0.15s;
+  }
+
+  .volume-input-group button:hover {
+    background: #1a4a8a;
+  }
+
+  /* ── Preview panel ── */
+  .split-preview {
+    flex: 1;
+    min-width: 300px;
+  }
+
+  .preview-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #888;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .volume-card {
+    background: #1e1e2e;
+    border: 1px solid #0f3460;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  .volume-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .volume-badge {
+    background: #0f3460;
+    color: #a8dadc;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-family: monospace;
+  }
+
+  .volume-count {
+    color: #888;
+    font-size: 0.75rem;
+  }
+
+  .volume-files {
+    font-size: 0.7rem;
+    color: #888;
+    line-height: 1.4;
+  }
+
+  .volume-files .file {
+    color: #7fb3b3;
+    font-family: monospace;
+    margin-bottom: 2px;
+  }
+
+  /* ── Action buttons ── */
+  .split-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid #333;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: opacity 0.15s;
+  }
+
+  .btn:hover { opacity: 0.85; }
+
+  .btn-grey {
+    background: #3a3a4a;
+    color: #ccc;
+  }
+
+  .btn-blue {
+    background: #0288d1;
+    color: #fff;
+  }
+
+  .btn-green {
+    background: #2e7d32;
+    color: #fff;
+  }
+
+  /* ── Info boxes ── */
+  .info-box {
+    background: #1e1a2e;
+    border: 1px solid #6a1fa2;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 24px;
+    font-size: 0.8rem;
+    line-height: 1.7;
+    color: #c084fc;
+  }
+
+  .info-box strong { color: #e040fb; }
+
+  code {
+    background: #0d0d1a;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.85em;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <h1>💾 Split Volumes Feature Mockup</h1>
+  <p class="subtitle">Option 2 + Hybrid: Manual selection with auto-suggest button</p>
+
+  <div class="info-box">
+    <strong>Scenario:</strong> User has <code>Largo Winch 001-020</code> (20 files, Flag: M).
+    They want to split into <strong>v01</strong> (first 10 issues) and <strong>v02</strong> (remaining 10 issues).
+    Note: <code>v01</code> already exists, so auto-detect should suggest <code>v02</code> for the next selection.
+  </div>
+
+  <!-- MAIN TABLE -->
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30px"></th>
+        <th>Folder / Series</th>
+        <th style="width:60px; text-align:center">Files</th>
+        <th style="width:50px; text-align:center">Flag</th>
+        <th style="width:80px; text-align:center">Status</th>
+        <th style="width:80px; text-align:center">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Main row (closed) -->
+      <tr class="series-row">
+        <td><button class="expand-btn" onclick="toggleRow()">▶</button></td>
+        <td>
+          <div style="font-size:0.8rem; color:#888; font-family:monospace; margin-bottom:2px">/mnt/extramedia/Comics/Largo Winch (2008-2023)/</div>
+          <div class="series-name">Largo Winch</div>
+        </td>
+        <td style="text-align:center; color:#a8dadc; font-weight:600">20</td>
+        <td style="text-align:center"><span class="flag-M">M</span></td>
+        <td style="text-align:center"><span class="status-ready">Ready</span></td>
+        <td style="text-align:center">
+          <button class="btn btn-grey" style="font-size:0.75rem; padding:4px 10px">Split Volumes</button>
+        </td>
+      </tr>
+
+      <!-- EXPANDED SPLIT PANEL (hidden by default, shown on click) -->
+      <tr class="split-expanded" id="split-row" style="display:none">
+        <td colspan="6">
+          <div class="split-panel">
+
+            <!-- LEFT: Files with checkboxes ──────────────────────────────────────── -->
+            <div class="split-files">
+              <div class="split-files-title">📋 Select files for volume assignment</div>
+
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 001 - The Heir (2008).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 002 - Takeover Bid (2008).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 003 - H (2009).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 004 - Fort Makiling (2009).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 005 - See Venice (2010).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 006 - ...and Die (2010).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 007 - Golden Gate (2011).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 008 - Shadow (2011).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 009 - The Price of Money (2012).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <div class="file-item">
+                <input type="checkbox" onchange="updateSelected()">
+                <span class="file-name">Largo Winch 010 - The Law of the Dollar (2012).cbr</span>
+                <span class="file-volume unassigned">—</span>
+              </div>
+              <p style="font-size:0.75rem; color:#888; margin-top:8px; text-align:center">... (10 more files below)</p>
+            </div>
+
+            <!-- CENTER: Volume assignment ────────────────────────────────────────── -->
+            <div class="split-control">
+              <div class="control-title">Assign Volume</div>
+
+              <div class="selected-files-list empty" id="selected-list">
+                <em>Select files to assign them</em>
+              </div>
+
+              <div class="volume-input-group">
+                <input type="text" id="volume-input" placeholder="v01" value="">
+                <button onclick="assignVolume()">Assign</button>
+              </div>
+
+              <button class="btn btn-grey" style="width:100%; margin-bottom:8px; font-size:0.75rem">
+                💡 Suggest Split
+              </button>
+
+              <div style="font-size:0.7rem; color:#888; line-height:1.6; padding:8px; background:#0d0d1a; border-radius:4px;">
+                <strong style="color:#a8dadc">Smart hints:</strong><br>
+                • Checks existing volumes (v01 exists) → suggests <strong>v02</strong> next<br>
+                • Shows file count per volume
+              </div>
+            </div>
+
+            <!-- RIGHT: Preview ──────────────────────────────────────────────────── -->
+            <div class="split-preview">
+              <div class="preview-title">📊 Volume Preview</div>
+
+              <div class="volume-card">
+                <div class="volume-header">
+                  <span class="volume-badge">v01</span>
+                  <span class="volume-count">(10 files) — EXISTS</span>
+                </div>
+                <div class="volume-files" style="color:#888">
+                  <em>Already merged. Not editable.</em>
+                </div>
+              </div>
+
+              <div class="volume-card">
+                <div class="volume-header">
+                  <span class="volume-badge">v02</span>
+                  <span class="volume-count">(0 files) — WILL CREATE</span>
+                </div>
+                <div class="volume-files">
+                  <em style="color:#888">Select files above to assign</em>
+                </div>
+              </div>
+
+              <div style="margin-top:12px; padding:8px; background:#1e1a2e; border-radius:4px; font-size:0.75rem; color:#c084fc; border:1px solid #6a1fa2;">
+                <strong>Next steps:</strong><br>
+                1. Select files 1–10<br>
+                2. Assign to <code>v02</code><br>
+                3. Click <strong>Create Selected Volumes</strong>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- FOOTER ACTIONS ──────────────────────────────────────────────────── -->
+          <div class="split-actions">
+            <button class="btn btn-grey" onclick="toggleRow()">✕ Cancel</button>
+            <button class="btn btn-blue">📋 Dry Run</button>
+            <button class="btn btn-green">✨ Create Selected Volumes</button>
+          </div>
+        </td>
+      </tr>
+
+    </tbody>
+  </table>
+
+  <!-- EXPLANATION ─────────────────────────────────────────────────────────── -->
+  <div style="background:#1e1a2e; border:1px solid #6a1fa2; border-radius:6px; padding:16px; color:#e0e0e0; line-height:1.8">
+    <h2 style="color:#e040fb; margin-bottom:12px">How It Works</h2>
+
+    <p><strong>1. Checkbox Selection</strong></p>
+    <p style="margin-left:16px; margin-bottom:12px; color:#888">
+      User checks files 1–10. The <strong>"Assign Volume"</strong> panel shows the count and has a text input for the volume name.
+    </p>
+
+    <p><strong>2. Smart Volume Detection</strong></p>
+    <p style="margin-left:16px; margin-bottom:12px; color:#888">
+      Server scans the folder. Finds <code>Largo Winch v01 (2008).cbz</code> exists. When user checks files, the input field auto-populates with the next volume number: <code>v02</code>.
+    </p>
+
+    <p><strong>3. Preview + Confirmation</strong></p>
+    <p style="margin-left:16px; margin-bottom:12px; color:#888">
+      Right panel shows: existing volumes (read-only, greyed out), and new volumes being created with file counts. User can select more files and assign them to <code>v03</code>, etc.
+    </p>
+
+    <p><strong>4. Dry Run or Create</strong></p>
+    <p style="margin-left:16px; margin-bottom:12px; color:#888">
+      Click <strong>"Dry Run"</strong> to preview without executing. Click <strong>"✨ Create Selected Volumes"</strong> to merge. Server runs <code>/api/create</code> for each volume sequentially.
+    </p>
+
+    <p><strong>5. (Phase 2) Auto-Suggest Button</strong></p>
+    <p style="margin-left:16px; color:#888">
+      "💡 Suggest Split" proposes balanced splits: 20 files → 2×10 each, or 3×7+6+7, depending on logic. User can accept or override with manual selection.
+    </p>
+  </div>
+
+</div>
+
+<script>
+function toggleRow() {
+  const row = document.getElementById('split-row');
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+function updateSelected() {
+  const list = document.getElementById('selected-list');
+  const checkboxes = Array.from(document.querySelectorAll('.file-item input[type="checkbox"]:checked'));
+  if (checkboxes.length === 0) {
+    list.classList.add('empty');
+    list.innerHTML = '<em>Select files to assign them</em>';
+    document.getElementById('volume-input').value = '';
+    return;
+  }
+  list.classList.remove('empty');
+  list.innerHTML = checkboxes.map((chk, i) => {
+    const fname = chk.parentElement.querySelector('.file-name').textContent.split('/').pop();
+    return (i + 1) + '. ' + fname.substring(0, 30) + '…';
+  }).join('<br>');
+
+  // Auto-populate v02 if v01 exists (dummy logic)
+  if (checkboxes.length > 0 && !document.getElementById('volume-input').value) {
+    document.getElementById('volume-input').value = 'v02';
+  }
+}
+
+function assignVolume() {
+  alert('✨ Files assigned to volume: ' + document.getElementById('volume-input').value);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,2315 @@
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comic Volume Creator — Mockup</title>
+<style>
+  /* ── CSS Custom Properties (theme variables) ── */
+  :root {
+    --bg:          #121212;
+    --bg2:         #1e1e2e;
+    --bg3:         #2a2a3e;
+    --header-bg:   #16213e;
+    --header-b:    #0f3460;
+    --folder-bg:   #0f3460;
+    --folder-b:    #1a3a6e;
+    --accent:      #e94560;
+    --accent2:     #a8dadc;
+    --text:        #e0e0e0;
+    --text-dim:    #888;
+    --table-bg:    #1e1e1e;
+    --table-head:  #2c2c2c;
+    --table-row-h: #252525;
+    --table-b:     #2a2a2a;
+    --input-bg:    #1a1a2e;
+    --input-b:     #0f346080;
+    --skipped-bg:  #1e1a2e;
+    --skipped-b:   #6a1fa2;
+    --skipped-hd:  #2a1a3e;
+    --skipped-c:   #c084fc;
+    --console-bg:  #0d0d1a;
+    --console-hd:  #16213e;
+    --toggle-bg:   #0f3460;
+    --toggle-b:    #1a4a8a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--header-bg);
+    border-bottom: 2px solid var(--header-b);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 1.3rem;
+    color: var(--accent);
+    flex: 1;
+    white-space: nowrap;
+  }
+  header h1 span { color: var(--accent2); font-weight: 400; font-size: 0.95rem; }
+
+  /* ── Settings button ── */
+  #settings-btn, #help-btn {
+    background: var(--bg3);
+    border: 1px solid var(--header-b);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s;
+  }
+  #settings-btn:hover, #help-btn:hover { background: var(--toggle-b); }
+
+  /* ── Settings panel ── */
+  #settings-panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: 280px;
+    height: 100vh;
+    background: var(--header-bg);
+    border-left: 2px solid var(--header-b);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+    overflow-y: auto;
+  }
+  #settings-panel.open { transform: translateX(0); }
+
+  /* ── Help Modal ── */
+  #help-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 1200;
+    align-items: center;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 24px;
+  }
+  #help-modal.open {
+    display: flex;
+  }
+  #help-modal-content {
+    background: var(--bg2);
+    border: 1px solid var(--header-b);
+    border-radius: 10px;
+    width: 100%;
+    max-width: 700px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+  .help-header {
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--header-b);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    color: var(--accent2);
+    font-size: 1rem;
+    position: sticky;
+    top: 0;
+  }
+  .help-header button {
+    background: none; border: none;
+    color: var(--text-dim); cursor: pointer; font-size: 1.1rem;
+  }
+  .help-header button:hover { color: var(--accent); }
+  .help-body {
+    padding: 20px;
+    line-height: 1.8;
+  }
+  .help-section {
+    margin-bottom: 20px;
+  }
+  .help-section h3 {
+    font-size: 0.95rem;
+    color: var(--accent2);
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--bg3);
+    padding-bottom: 6px;
+  }
+  .help-section p {
+    font-size: 0.85rem;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .help-section ul {
+    font-size: 0.85rem;
+    color: var(--text);
+    margin-left: 20px;
+    margin-bottom: 8px;
+  }
+  .help-section li {
+    margin-bottom: 6px;
+  }
+  .help-code {
+    background: var(--bg);
+    border-left: 2px solid var(--accent);
+    padding: 8px 12px;
+    margin: 8px 0;
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #a8dadc;
+    border-radius: 4px;
+  }
+  .help-badge {
+    display: inline-block;
+    background: var(--bg3);
+    color: var(--text);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 0 2px;
+  }
+
+  .settings-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--header-b);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--accent2);
+  }
+  .settings-close {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 1.1rem;
+    line-height: 1;
+  }
+  .settings-close:hover { color: var(--accent); }
+  .settings-section {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--bg3);
+  }
+  .settings-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    font-weight: 600;
+  }
+
+  /* ── Theme swatches ── */
+  .theme-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .theme-swatch {
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.15s, transform 0.1s;
+  }
+  .theme-swatch:hover { transform: scale(1.03); }
+  .theme-swatch.active { border-color: var(--accent); }
+  .swatch-preview {
+    height: 52px;
+    display: flex;
+    flex-direction: column;
+  }
+  .swatch-bar { height: 16px; }
+  .swatch-body { flex: 1; display: flex; align-items: center; padding: 4px 6px; gap: 4px; }
+  .swatch-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .swatch-line { height: 4px; border-radius: 2px; flex: 1; opacity: 0.5; }
+  .swatch-label {
+    text-align: center;
+    font-size: 0.72rem;
+    padding: 5px 4px;
+    font-weight: 600;
+    background: var(--bg2);
+    color: var(--text);
+  }
+
+  /* ── Overlay ── */
+  #settings-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 998;
+  }
+  #settings-overlay.open { display: block; }
+
+  /* ── Folder Picker ── */
+  .folder-bar {
+    background: var(--folder-bg);
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--folder-b);
+  }
+  .folder-label { font-size: 0.75rem; color: var(--accent2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; white-space: nowrap; }
+  .folder-path {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid #0f346080;
+    color: #e0e0e0;
+    padding: 7px 12px;
+    border-radius: 5px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    min-width: 200px;
+  }
+  .btn { border: none; padding: 8px 16px; border-radius: 5px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: opacity 0.15s; }
+  .btn:hover { opacity: 0.85; }
+  .btn-red    { background: #e94560; color: #fff; }
+  .btn-teal   { background: #0d7377; color: #fff; }
+  .btn-green  { background: #2e7d32; color: #fff; }
+  .btn-orange { background: #e65100; color: #fff; }
+  .btn-grey   { background: #3a3a4a; color: #ccc; }
+  .btn-blue   { background: #0288d1; color: #fff; }
+  .btn-sm     { padding: 5px 10px; font-size: 0.78rem; }
+
+  /* ── Stats Bar ── */
+  .stats-bar {
+    background: var(--bg2);
+    padding: 10px 24px;
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--bg3);
+    font-size: 0.85rem;
+  }
+  .stat-item { display: flex; align-items: center; gap: 6px; }
+  .stat-num { font-size: 1.1rem; font-weight: 700; }
+  .stat-label { color: var(--text-dim); }
+  .stat-divider { color: #333; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    background: var(--bg2);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid #2a2a3e;
+  }
+  .toolbar-left { display: flex; gap: 8px; align-items: center; flex: 1; flex-wrap: wrap; }
+  .toolbar-right { display: flex; gap: 8px; align-items: center; }
+  .selected-badge {
+    background: #0f3460;
+    color: #a8dadc;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    display: none;
+  }
+  .selected-badge.visible { display: inline-block; }
+
+  select.filter-select {
+    background: var(--bg3);
+    color: var(--text);
+    border: 1px solid var(--header-b);
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    cursor: pointer;
+  }
+  input.search-box {
+    background: var(--bg3);
+    color: var(--text);
+    border: 1px solid var(--header-b);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    width: 200px;
+  }
+  input.search-box::placeholder { color: #666; }
+
+  /* ── Skipped Section ── */
+  .skipped-section {
+    margin: 12px 24px;
+    background: var(--skipped-bg);
+    border: 1px solid var(--skipped-b);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .skipped-header {
+    background: var(--skipped-hd);
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--skipped-c);
+    font-weight: 600;
+  }
+  .skipped-header:hover { background: var(--bg3); }
+  .skipped-body { padding: 8px 14px 10px; }
+  .skipped-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    font-size: 0.8rem;
+    color: var(--text);
+    border-bottom: 1px solid var(--bg3);
+  }
+  .skipped-row:last-child { border-bottom: none; }
+  .skipped-row .path { font-family: monospace; color: var(--skipped-c); flex: 1; }
+  .skipped-row .count { color: var(--text-dim); font-size: 0.75rem; }
+
+  /* ── Main Content ── */
+  .main-content {
+    flex: 1;
+    padding: 0 24px 24px;
+    overflow: auto;
+  }
+
+  /* ── Table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--table-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    margin-top: 12px;
+    font-size: 0.83rem;
+  }
+  th {
+    background: var(--table-head);
+    padding: 9px 12px;
+    text-align: left;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--table-b); vertical-align: middle; }
+  tr.series-row:hover td { background: var(--table-row-h); }
+  tr.series-row { cursor: pointer; }
+  tr.file-subrow td { background: var(--bg); padding: 4px 12px 4px 48px; font-size: 0.76rem; color: var(--text-dim); border-bottom: 1px solid var(--table-b); }
+  tr.file-subrow.hidden { display: none; }
+  tr.file-subrow .fname { font-family: monospace; color: #7fb3b3; }
+
+  /* ── Flag badges ── */
+  .flag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .flag-Y { background: #1b5e20; color: #a5d6a7; }
+  .flag-M { background: #e65100; color: #ffcc80; }
+  .flag-S { background: #f9a825; color: #3e2400; }
+
+  /* ── Status badges ── */
+  .status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.73rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .status-ready    { background: #1b5e20; color: #a5d6a7; }
+  .status-exists   { background: #0d47a1; color: #90caf9; }
+  .status-single   { background: #f57f17; color: #fff9c4; }
+  .status-skipped  { background: #4a148c; color: #e1bee7; }
+
+  /* ── Output name cell ── */
+  .outname-cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .outname-text {
+    font-family: monospace;
+    font-size: 0.78rem;
+    color: var(--accent2);
+    flex: 1;
+  }
+  .outname-input {
+    font-family: monospace;
+    font-size: 0.78rem;
+    background: var(--bg3);
+    color: var(--accent2);
+    border: 1px solid var(--header-b);
+    border-radius: 3px;
+    padding: 3px 6px;
+    width: 100%;
+    display: none;
+  }
+  .edit-btn {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 4px;
+    border-radius: 3px;
+    line-height: 1;
+  }
+  .edit-btn:hover { color: var(--accent2); background: var(--bg3); }
+
+  /* ── Expand button ── */
+  .expand-btn {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px 4px;
+    transition: transform 0.15s;
+  }
+  .expand-btn.open { transform: rotate(90deg); color: #a8dadc; }
+
+  /* ── Checkbox ── */
+  input[type=checkbox] { cursor: pointer; accent-color: #e94560; width: 15px; height: 15px; }
+
+  /* ── Actions cell ── */
+  .actions-cell { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+
+  /* ── Console panel ── */
+  #console-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 220px;
+    background: var(--console-bg);
+    border-top: 2px solid var(--header-b);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s;
+  }
+  #console-panel.hidden { transform: translateY(100%); }
+  .console-header {
+    background: var(--console-hd);
+    padding: 6px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+    color: var(--accent2);
+    font-weight: 600;
+  }
+  .console-header .spacer { flex: 1; }
+  .console-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1rem; }
+  .console-close:hover { color: var(--accent); }
+  #console-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 16px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    line-height: 1.6;
+  }
+  .log-ok     { color: #81c784; }
+  .log-err    { color: #e57373; }
+  .log-info   { color: #64b5f6; }
+  .log-warn   { color: #ffb74d; }
+
+  /* ── Console toggle button ── */
+  #console-toggle {
+    position: fixed;
+    bottom: 16px;
+    right: 24px;
+    background: var(--toggle-bg);
+    color: var(--accent2);
+    border: 1px solid var(--toggle-b);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    z-index: 100;
+    transition: background 0.15s;
+  }
+  #console-toggle:hover { background: var(--toggle-b); }
+  #console-toggle.panel-open { bottom: 228px; }
+
+  /* ── Padding when console open ── */
+  body.console-open .main-content { padding-bottom: 230px; }
+  body.console-open .toolbar { margin-bottom: 0; }
+
+  /* ── Mockup note ── */
+  .mockup-banner {
+    background: #2d1a00;
+    border: 1px solid #e65100;
+    color: #ffb74d;
+    padding: 8px 24px;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  /* ── Folder path mono ── */
+  .mono { font-family: monospace; }
+  .dim  { color: #666; }
+  .folder-icon { color: #81c784; }
+
+  /* ── Confirm Create dialog ── */
+  #confirm-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 1100;
+    align-items: center;
+    justify-content: center;
+  }
+  #confirm-overlay.open { display: flex; }
+  #confirm-dialog {
+    background: var(--bg2);
+    border: 1px solid var(--header-b);
+    border-radius: 10px;
+    width: 540px;
+    max-width: 95vw;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  .confirm-header {
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--header-b);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 600;
+    color: var(--accent2);
+    font-size: 0.95rem;
+  }
+  .confirm-header button {
+    background: none; border: none;
+    color: var(--text-dim); cursor: pointer; font-size: 1.1rem;
+  }
+  .confirm-header button:hover { color: var(--accent); }
+  .confirm-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .confirm-field label {
+    display: block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .confirm-cmd {
+    background: var(--console-bg);
+    border: 1px solid var(--header-b);
+    border-radius: 5px;
+    padding: 10px 14px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: #81c784;
+    line-height: 1.7;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .confirm-cmd .cmd-dim { color: #556; }
+  .confirm-outname {
+    width: 100%;
+    background: var(--bg3);
+    color: var(--accent2);
+    border: 1px solid var(--header-b);
+    border-radius: 5px;
+    padding: 9px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .confirm-outname:focus { outline: none; border-color: var(--accent2); }
+  .confirm-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--bg3);
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  /* ── Split Volumes Panel ── */
+  tr.split-expanded td {
+    background: var(--bg3) !important;
+    padding: 0 !important;
+  }
+
+  .split-panel {
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 1fr 180px 1fr;
+    gap: 20px;
+  }
+
+  .split-files-section {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .split-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+
+  .file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    padding: 2px;
+  }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    background: var(--bg);
+    border-radius: 4px;
+    font-size: 0.78rem;
+  }
+
+  .file-item input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: var(--accent);
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+  }
+
+  .file-name {
+    flex: 1;
+    font-family: monospace;
+    color: #7fb3b3;
+    font-size: 0.76rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .file-volume-badge {
+    background: var(--bg2);
+    color: var(--accent2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: monospace;
+    min-width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .file-volume-badge.unassigned {
+    background: #333;
+    color: #666;
+  }
+
+  /* ── Volume Control Panel ── */
+  .split-control {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .selected-files-display {
+    background: var(--bg);
+    border: 1px solid var(--header-b);
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 0.72rem;
+    color: var(--accent2);
+    line-height: 1.5;
+    min-height: 80px;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .selected-files-display.empty {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .volume-input-group {
+    display: flex;
+    gap: 6px;
+  }
+
+  .volume-input-group input {
+    flex: 1;
+    background: var(--bg);
+    color: var(--accent2);
+    border: 1px solid var(--header-b);
+    border-radius: 4px;
+    padding: 6px 8px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .volume-input-group input:focus {
+    outline: none;
+    border-color: var(--accent2);
+  }
+
+  .volume-input-group button {
+    background: var(--toggle-bg);
+    border: 1px solid var(--toggle-b);
+    color: var(--accent2);
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+
+  .volume-input-group button:hover {
+    background: var(--toggle-b);
+  }
+
+  .suggest-button {
+    background: var(--bg2);
+    border: 1px solid var(--header-b);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .suggest-button:hover {
+    background: var(--bg3);
+  }
+
+  .split-hint {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    padding: 8px;
+    background: var(--bg);
+    border-radius: 4px;
+    border: 1px solid #333;
+  }
+
+  /* ── Volume Preview Panel ── */
+  .split-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .volume-card {
+    background: var(--bg);
+    border: 1px solid var(--header-b);
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 0.75rem;
+  }
+
+  .volume-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .volume-card-badge {
+    background: var(--toggle-bg);
+    color: var(--accent2);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    font-family: monospace;
+  }
+
+  .volume-card-count {
+    color: var(--text-dim);
+    font-size: 0.7rem;
+  }
+
+  .volume-card-status {
+    font-size: 0.7rem;
+    color: #a5d6a7;
+    font-weight: 600;
+  }
+
+  .volume-card-status.exists {
+    color: #90caf9;
+  }
+
+  .volume-card-files {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    line-height: 1.4;
+  }
+
+  .volume-card-files .file {
+    color: #7fb3b3;
+    font-family: monospace;
+  }
+
+  /* ── Split Actions ── */
+  .split-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--bg3);
+  }
+</style>
+</head>
+<body>
+
+<!-- SERVER NOTICE -->
+<div class="mockup-banner" id="server-banner">
+  ⚠ Requires <strong>comic_volume_creator_server.py</strong> running on port 8765 — <code>python3 comic_volume_creator_server.py</code>
+</div>
+
+<!-- CONFIRM CREATE DIALOG -->
+<div id="confirm-overlay">
+  <div id="confirm-dialog">
+    <div class="confirm-header">
+      <span>✨ Confirm — Create CBZ Volume</span>
+      <button onclick="closeConfirm()">✕</button>
+    </div>
+    <div class="confirm-body">
+      <div class="confirm-field">
+        <label>Output filename</label>
+        <input class="confirm-outname" id="confirm-outname" type="text">
+      </div>
+      <div class="confirm-field">
+        <label>Command to be executed</label>
+        <div class="confirm-cmd" id="confirm-cmd"></div>
+      </div>
+    </div>
+    <div class="confirm-footer">
+      <button class="btn btn-grey" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-green" onclick="doConfirmedCreate()">✨ Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS OVERLAY -->
+<div id="settings-overlay" onclick="closeSettings()"></div>
+
+<!-- SETTINGS PANEL -->
+<div id="settings-panel">
+  <div class="settings-header">
+    <span>⚙ Settings</span>
+    <button class="settings-close" onclick="closeSettings()">✕</button>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Colour Theme</div>
+    <div class="theme-grid" id="theme-grid">
+      <!-- swatches injected by JS -->
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Font Size</div>
+    <div style="display:flex; gap:8px; align-items:center; font-size:0.82rem;">
+      <button class="btn btn-grey btn-sm" onclick="setFontSize('small')">Small</button>
+      <button class="btn btn-grey btn-sm" onclick="setFontSize('medium')">Medium</button>
+      <button class="btn btn-grey btn-sm" onclick="setFontSize('large')">Large</button>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Table Density</div>
+    <div style="display:flex; gap:8px; align-items:center; font-size:0.82rem;">
+      <button class="btn btn-grey btn-sm" onclick="setDensity('compact')">Compact</button>
+      <button class="btn btn-grey btn-sm" onclick="setDensity('normal')">Normal</button>
+      <button class="btn btn-grey btn-sm" onclick="setDensity('relaxed')">Relaxed</button>
+    </div>
+  </div>
+
+  <div class="settings-section" style="font-size:0.75rem; color:var(--text-dim); line-height:1.6;">
+    <div class="settings-section-title">About</div>
+    Comic Volume Creator — Mockup v0.1<br>
+    Theme is saved to localStorage.
+  </div>
+</div>
+
+<!-- HELP MODAL -->
+<div id="help-modal" onclick="if(event.target === this) closeHelp()">
+  <div id="help-modal-content">
+    <div class="help-header">
+      <span>❓ Help — Comic Volume Creator</span>
+      <button onclick="closeHelp()">✕</button>
+    </div>
+    <div class="help-body">
+
+      <div class="help-section">
+        <h3>What This Does</h3>
+        <p>
+          Comic Volume Creator scans a folder for individual comic files (.cbz, .cbr) and merges
+          them into organized volumes. It's designed for large comic collections where you want to
+          group individual issues (e.g., #001–#010) into a single merged archive (v01.cbz).
+        </p>
+      </div>
+
+      <div class="help-section">
+        <h3>Quick Start</h3>
+        <ol style="list-style: decimal; margin-left: 20px;">
+          <li><strong>Enter source path:</strong> Set the folder containing your comics (top bar)</li>
+          <li><strong>Scan folders:</strong> Click the blue "🔍 Scan Folders" button</li>
+          <li><strong>Review results:</strong> See all series found, grouped by file count</li>
+          <li><strong>Create volumes:</strong> Click "✨ Create" on a row, or select multiple and bulk create</li>
+        </ol>
+      </div>
+
+      <div class="help-section">
+        <h3>Flag Legend</h3>
+        <p>Each series is marked with a flag indicating how many individual files it has:</p>
+        <ul>
+          <li><span class="help-badge" style="background: #1b5e20; color: #a5d6a7;">Y</span> = <strong>4–6 files</strong> (ready to merge)</li>
+          <li><span class="help-badge" style="background: #f9a825; color: #3e2400;">S</span> = <strong>&lt;4 files</strong> (small series)</li>
+          <li><span class="help-badge" style="background: #e65100; color: #ffcc80;">M</span> = <strong>&gt;6 files</strong> (large volume)</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Filters</h3>
+        <ul>
+          <li><strong>Status Filter:</strong> Ready (Y/M) | CBZ exists | Single file</li>
+          <li><strong>Flag Filter:</strong> Y | S | M | All flags</li>
+          <li><strong>Search:</strong> Type series name to find matches</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Single Volume Creation</h3>
+        <ol style="list-style: decimal; margin-left: 20px;">
+          <li>Click the <strong>"✨ Create"</strong> button on a row</li>
+          <li>Review the proposed output name and command</li>
+          <li>Edit the name if needed (e.g., change v01 to custom name)</li>
+          <li>Click <strong>"✨ Create"</strong> to confirm and merge</li>
+        </ol>
+        <p style="color: var(--text-dim); margin-top: 8px;">
+          <em>Process: extracts all files → zips them together → moves to folder → deletes originals</em>
+        </p>
+      </div>
+
+      <div class="help-section">
+        <h3>Split Large Volumes (Flag: M)</h3>
+        <p>
+          For series with more than 6 files, a <strong>"Split"</strong> button appears.
+          Use it to divide into multiple volumes:
+        </p>
+        <ol style="list-style: decimal; margin-left: 20px;">
+          <li>Click <strong>"Split"</strong> on the row</li>
+          <li>Check files for <strong>v01</strong>, then assign volume name</li>
+          <li>Check remaining files, change volume to <strong>v02</strong>, assign</li>
+          <li>Or click <strong>"💡 Suggest Split"</strong> for auto-balanced split</li>
+          <li>Review preview, then click <strong>"✨ Create Volumes"</strong></li>
+        </ol>
+      </div>
+
+      <div class="help-section">
+        <h3>Bulk Operations</h3>
+        <ol style="list-style: decimal; margin-left: 20px;">
+          <li>Check <strong>checkboxes</strong> next to rows (left side)</li>
+          <li>Use <strong>"☑ Select All"</strong> / <strong>"☐ Deselect All"</strong> shortcuts</li>
+          <li>Click <strong>"📋 Dry Run"</strong> to preview what would happen</li>
+          <li>Click <strong>"✨ Create Selected CBZs"</strong> to merge all at once</li>
+        </ol>
+      </div>
+
+      <div class="help-section">
+        <h3>Console Output</h3>
+        <p>
+          Click the <strong>"🖥 Console"</strong> button (bottom-right) to see detailed merge progress:
+        </p>
+        <ul>
+          <li><span style="color: #81c784;">✔ Green</span> = successful steps</li>
+          <li><span style="color: #e57373;">✖ Red</span> = errors</li>
+          <li><span style="color: #64b5f6;">ℹ Blue</span> = information</li>
+          <li><span style="color: #ffb74d;">⚠ Orange</span> = warnings</li>
+        </ul>
+      </div>
+
+      <div class="help-section">
+        <h3>Settings & Themes</h3>
+        <p>Click the <strong>"⚙ Settings"</strong> button (top-right) to:</p>
+        <ul>
+          <li>Choose a <strong>colour theme</strong> (10 themes available)</li>
+          <li>Adjust <strong>font size</strong> (small, medium, large)</li>
+          <li>Change <strong>table density</strong> (compact, normal, relaxed)</li>
+        </ul>
+        <p style="color: var(--text-dim); margin-top: 8px;">
+          <em>Settings are saved to your browser.</em>
+        </p>
+      </div>
+
+      <div class="help-section">
+        <h3>Keyboard Shortcuts</h3>
+        <div class="help-code">Escape — Close dialogs<br>Enter (in path field) — Start scan<br>Enter (in confirm dialog) — Confirm creation</div>
+      </div>
+
+      <div class="help-section">
+        <h3>Troubleshooting</h3>
+        <ul>
+          <li><strong>No results after scan?</strong> Ensure files are named like "Series 001.cbr" (numbered issues)</li>
+          <li><strong>Server not found?</strong> Run: <code>python3 comic_volume_creator_server.py</code></li>
+          <li><strong>Files not deleted after merge?</strong> Check console for errors; originals are only deleted on success</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <h1>Comic Volume Creator <span>— Bulk CBZ Merger</span></h1>
+  <button id="help-btn" onclick="openHelp()">❓ Help</button>
+  <button id="settings-btn" onclick="openSettings()">⚙ Settings</button>
+</header>
+
+<!-- FOLDER PICKER -->
+<div class="folder-bar">
+  <span class="folder-label">📁 Source Root</span>
+  <input class="folder-path" type="text" value="/mnt/extramedia/Comics" id="source-path" placeholder="Enter folder path…" onkeydown="if(event.key==='Enter') scanFolders()">
+  <button class="btn btn-red" id="scan-btn" onclick="scanFolders()">🔍 Scan Folders</button>
+</div>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-num" style="color:#a5d6a7" id="stat-ready">—</span>
+    <span class="stat-label">Ready (Y/M)</span>
+  </div>
+  <span class="stat-divider">│</span>
+  <div class="stat-item">
+    <span class="stat-num" style="color:#ffb74d" id="stat-small">—</span>
+    <span class="stat-label">Small (S)</span>
+  </div>
+  <span class="stat-divider">│</span>
+  <div class="stat-item">
+    <span class="stat-num" style="color:#90caf9" id="stat-exists">—</span>
+    <span class="stat-label">CBZ exists</span>
+  </div>
+  <span class="stat-divider">│</span>
+  <div class="stat-item">
+    <span class="stat-num" style="color:#e1bee7" id="stat-skipped">—</span>
+    <span class="stat-label">Skipped folders</span>
+  </div>
+  <span class="stat-divider">│</span>
+  <div class="stat-item">
+    <span class="stat-num" style="color:#e0e0e0" id="stat-total">—</span>
+    <span class="stat-label">Total series found</span>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main-content" id="main-content">
+
+  <!-- SKIPPED FOLDERS -->
+  <div class="skipped-section" id="skipped-section" style="display:none">
+    <div class="skipped-header" onclick="toggleSkipped()">
+      <span id="skipped-arrow">▶</span>
+      <span id="skipped-toggle-label">⚠ Skipped Folders (contain sub-subfolders — need manual attention)</span>
+    </div>
+    <div class="skipped-body" id="skipped-body" style="display:none"></div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <!-- FLAG LEGEND -->
+  <div style="padding: 8px 24px; font-size: 0.75rem; color: var(--text-dim); line-height: 1.8; border-bottom: 1px solid var(--bg3);">
+    <span style="color: var(--accent2); font-weight: 600;">Flag Legend:</span>
+    <span style="margin-left: 12px;"><span class="flag flag-Y">Y</span> = 4–6 files (ready to merge)</span>
+    <span style="margin-left: 12px;"><span class="flag flag-S">S</span> = &lt;4 files (small series)</span>
+    <span style="margin-left: 12px;"><span class="flag flag-M">M</span> = &gt;6 files (large volume)</span>
+  </div>
+
+  <div class="toolbar" style="margin: 0 0 0 0; padding: 10px 0;">
+    <div class="toolbar-left">
+      <select class="filter-select" onchange="filterTable()" id="status-filter">
+        <option value="all">All statuses</option>
+        <option value="ready">Ready (Y / M)</option>
+        <option value="exists">CBZ exists</option>
+        <option value="single">Single file</option>
+      </select>
+      <select class="filter-select" onchange="filterTable()" id="flag-filter">
+        <option value="all">All flags</option>
+        <option value="Y">Y (4–6 files)</option>
+        <option value="S">S (&lt;4 files)</option>
+        <option value="M">M (&gt;6 files)</option>
+      </select>
+      <input class="search-box" type="text" placeholder="🔍 Search series..." oninput="searchTable(this.value)">
+      <span class="selected-badge" id="sel-badge">0 selected</span>
+    </div>
+    <div class="toolbar-right">
+      <button class="btn btn-grey btn-sm" onclick="selectAll()">☑ Select All</button>
+      <button class="btn btn-grey btn-sm" onclick="deselectAll()">☐ Deselect All</button>
+      <button class="btn btn-blue btn-sm" onclick="dryRun()">📋 Dry Run</button>
+      <button class="btn btn-green" onclick="createSelected()">✨ Create Selected CBZs</button>
+    </div>
+  </div>
+
+  <!-- MAIN TABLE -->
+  <table id="main-table">
+    <thead>
+      <tr>
+        <th style="width:30px"></th>
+        <th style="width:28px"></th>
+        <th>Folder / Series</th>
+        <th style="width:70px; text-align:center">Files</th>
+        <th style="width:50px; text-align:center">Flag</th>
+        <th style="width:60px; text-align:center">Status</th>
+        <th>Proposed Output Name</th>
+        <th style="width:130px">Actions</th>
+      </tr>
+    </thead>
+    <tbody id="table-body">
+      <!-- Rows injected by JS -->
+    </tbody>
+  </table>
+
+</div><!-- /main-content -->
+
+<!-- CONSOLE PANEL -->
+<div id="console-panel" class="hidden">
+  <div class="console-header">
+    <span>🖥 Console Output</span>
+    <span class="spacer"></span>
+    <button class="console-close" onclick="closeConsole()">✕</button>
+  </div>
+  <div id="console-output"></div>
+</div>
+
+<button id="console-toggle" onclick="toggleConsole()">🖥 Console</button>
+
+<script>
+// ── Data ───────────────────────────────────────────────────────────────────
+// (loaded from server via /api/scan)
+const SAMPLE_ROWS = [
+  {
+    id: 0,
+    folder: '/mnt/extramedia/Comics/Elsewhere (001-008+)',
+    series: 'Elsewhere',
+    files: ['Elsewhere 001 (2017) (Digital) (Mephisto-Empire).cbr',
+            'Elsewhere 002 (2017) (Digital) (Mephisto-Empire).cbr',
+            'Elsewhere 003 (2017) (Digital) (Mephisto-Empire).cbr',
+            'Elsewhere 004 (2017) (Digital) (Mephisto-Empire).cbr',
+            'Elsewhere 005 (2018) (Digital) (Mephisto-Empire).cbr',
+            'Elsewhere 006 (2018) (Digital) (Mephisto-Empire).cbr',
+            'Elsewhere 007 (2018) (Digital) (Mephisto-Empire).cbr',
+            'Elsewhere 008 (2018) (Digital) (Mephisto-Empire).cbr'],
+    flag: 'M', status: 'ready', outname: 'Elsewhere v01 (2018)'
+  },
+  {
+    id: 1,
+    folder: '/mnt/extramedia/Comics/Nanami',
+    series: 'Nanami',
+    files: ['Nanami 01 - Theatre of the Wind (2019) (Europe Comics).cbr',
+            'Nanami 02_-_The_Stranger__2019___Europe_Comics_.cbr',
+            'Nanami 03_-_The_Invisible_Kingdom__2019_.cbr',
+            'Nanami 04_-_The_Dark_Prince__2019_.cbr',
+            'Nanami 05 - The final battle (2019) (Europe Comics).cbr'],
+    flag: 'Y', status: 'ready', outname: 'Nanami v01 (2019)'
+  },
+  {
+    id: 2,
+    folder: '/mnt/extramedia/Comics/Nevada 01-06',
+    series: 'Nevada',
+    files: ['Nevada 01.cbz','Nevada 02.cbz','Nevada 03.cbz','Nevada 04.cbz','Nevada 05.cbz','Nevada 06.cbz'],
+    flag: 'Y', status: 'ready', outname: 'Nevada v01'
+  },
+  {
+    id: 3,
+    folder: '/mnt/extramedia/Comics/3W3M (Collection) (2021-2023)',
+    series: '3W3M',
+    files: ['3W3M (001) - Fable (2021) (digital-Empire).cbr',
+            '3W3M (002) - Duels I (2021) (digital-Empire).cbr',
+            '3W3M (003) - Duels II (2022) (digital-Empire).cbr',
+            '3W3M (004) - Mining (2022) (digital-Empire).cbr',
+            '3W3M (005) - The Lab (2022) (digital-Empire).cbr',
+            '3W3M (006) - Ruins (2022) (digital-Empire).cbr',
+            '3W3M (007) - Transit (2022) (digital-Empire).cbr',
+            '3W3M (008) - Assessment (2022) (digital-Empire).cbr'],
+    flag: 'M', status: 'ready', outname: '3W3M v01 (2022)'
+  },
+  {
+    id: 4,
+    folder: '/mnt/extramedia/Comics/Coins of Judas 01-02 (2023)',
+    series: 'Coins of Judas',
+    files: ['Coins of Judas #001 (2023) (Digital-HD) (LeDuch).cbz',
+            'Coins of Judas #002 (2023) (Digital-HD) (LeDuch).cbz'],
+    flag: 'S', status: 'small', outname: 'Coins of Judas v01 (2023)'
+  },
+  {
+    id: 5,
+    folder: '/mnt/extramedia/Comics/Ghosted in L.A. (2020)',
+    series: 'Ghosted in L.A.',
+    files: ['Ghosted in L.A. 001 (2019) (digital) (Son of Ultron-Empire).cbr',
+            'Ghosted in L.A. 002 (2019) (digital).cbr',
+            'Ghosted in L.A. 003 (2019) (digital).cbr',
+            'Ghosted in L.A. 004 (2019) (digital).cbr',
+            'Ghosted in L.A. 005 (2019) (digital).cbr',
+            'Ghosted in L.A. 006 (2019) (digital).cbr',
+            'Ghosted in L.A. 007 (2020) (digital).cbr',
+            'Ghosted in L.A. 008 (2020) (digital).cbr',
+            'Ghosted in L.A. 009 (2020) (digital).cbr',
+            'Ghosted in L.A. 011 (2020) (digital).cbr',
+            'Ghosted in L.A. 012 (2020) (digital).cbr'],
+    flag: 'M', status: 'exists', outname: 'Ghosted in L.A. v02 (2020)'
+  },
+  {
+    id: 6,
+    folder: '/mnt/extramedia/Comics/Blood Squad Seven',
+    series: 'Blood Squad Seven',
+    files: ['Blood Squad Seven 006 (2025) (Digital) (Zone-Empire).cbr',
+            'Blood Squad Seven 007 (2025) (Digital) (Zone-Empire).cbr',
+            'Blood Squad Seven 008 (2025) (Digital) (Zone-Empire).cbr'],
+    flag: 'S', status: 'small', outname: 'Blood Squad Seven v01 (2025)'
+  },
+  {
+    id: 7,
+    folder: '/mnt/extramedia/Comics/Largo Winch (2008-2019)',
+    series: 'Largo Winch',
+    files: ['Largo Winch 001 - The Heir (2008).cbr',
+            'Largo Winch 002 - Takeover Bid (2008).cbr',
+            'Largo Winch 003 - H (2009).cbr',
+            'Largo Winch 004 - Fort Makiling (2009).cbr',
+            'Largo Winch 005 - See Venice (2010).cbr',
+            'Largo Winch 006 - ...and Die (2010).cbr',
+            'Largo Winch 007 - Golden Gate (2011).cbr',
+            'Largo Winch 008 - Shadow (2011).cbr',
+            'Largo Winch 009 - The Price of Money (2012).cbr',
+            'Largo Winch 010 - The Law of the Dollar (2012).cbr',
+            'Largo Winch 018 - Scarlet Sails (2020).cbr',
+            'Largo Winch 020 - The Golden Percentile (2023).cbr'],
+    flag: 'M', status: 'ready', outname: 'Largo Winch v01 (2023)'
+  },
+  {
+    id: 8,
+    folder: '/mnt/extramedia/Comics/Accel Only One Issue',
+    series: 'Accell',
+    files: ['Accell 020 (2019) (digital) (Son of Ultron-Empire).cbr'],
+    flag: 'S', status: 'single', outname: 'Accell v01 (2019)'
+  },
+  {
+    id: 9,
+    folder: '/mnt/extramedia/Comics/Grumble',
+    series: 'Grumble',
+    files: ['Grumble 001 (2018) (digital) (Son of Ultron-Empire).cbr',
+            'Grumble 002 (2018) (digital).cbr',
+            'Grumble 003 (2019) (digital).cbr',
+            'Grumble 004 (2019) (digital).cbr',
+            'Grumble 005 (2019) (digital).cbr',
+            'Grumble 006 (2019) (digital).cbr',
+            'Grumble 007 (2019) (digital).cbr',
+            'Grumble 008 (2019) (digital).cbr',
+            'Grumble 009 (2019) (digital).cbr',
+            'Grumble 010 (2019) (digital).cbr'],
+    flag: 'M', status: 'ready', outname: 'Grumble v01 (2019)'
+  },
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+let data           = [];            // loaded from server; falls back to SAMPLE_ROWS after scan
+let expanded       = new Set();
+let selected       = new Set();
+let editingId      = null;
+let currentFilter  = 'all';
+let currentFlagFilter = 'all';
+let currentSearch  = '';
+let splitMode      = null;          // id of row in split mode
+let splitState     = {};            // {rowId: {fileAssignments: {filename: volume}, ...}}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function statusBadge(s) {
+  const map = {
+    ready:  '<span class="status status-ready">Ready</span>',
+    small:  '<span class="status status-single">Small</span>',
+    exists: '<span class="status status-exists">CBZ exists</span>',
+    single: '<span class="status status-skipped">Single</span>',
+  };
+  return map[s] || s;
+}
+
+function flagBadge(f) {
+  return `<span class="flag flag-${f}">${f}</span>`;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+
+  const rows = data.filter(r => {
+    if (currentFilter !== 'all') {
+      if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
+      if (currentFilter === 'exists' && r.status !== 'exists') return false;
+      if (currentFilter === 'single' && r.status !== 'single') return false;
+    }
+    if (currentFlagFilter !== 'all' && r.flag !== currentFlagFilter) return false;
+    if (currentSearch && !r.series.toLowerCase().includes(currentSearch.toLowerCase())) return false;
+    return true;
+  });
+
+  rows.forEach(row => {
+    // ── Main row
+    const isExp = expanded.has(row.id);
+    const isSel = selected.has(row.id);
+    const tr = document.createElement('tr');
+    tr.className = 'series-row';
+    tr.dataset.status = row.status;
+    tr.innerHTML = `
+      <td><input type="checkbox" class="row-chk" data-id="${row.id}" ${isSel?'checked':''} onchange="toggleSelect(${row.id})"></td>
+      <td><button class="expand-btn ${isExp?'open':''}" onclick="toggleExpand(${row.id})" title="Show files">▶</button></td>
+      <td>
+        <div style="font-size:0.8rem; color:#888; font-family:monospace; margin-bottom:2px">${row.folder}/</div>
+        <div style="font-weight:600; color:#e0e0e0">${row.series}</div>
+      </td>
+      <td style="text-align:center; color:#a8dadc; font-weight:600">${row.files.length}</td>
+      <td style="text-align:center">${flagBadge(row.flag)}</td>
+      <td style="text-align:center">${statusBadge(row.status)}</td>
+      <td>
+        <div class="outname-cell">
+          <span class="outname-text" id="out-text-${row.id}">${row.outname}.cbz</span>
+          <input class="outname-input" id="out-input-${row.id}" value="${row.outname}" onblur="saveOutname(${row.id})" onkeydown="outnameKey(event, ${row.id})">
+          <button class="edit-btn" onclick="editOutname(${row.id})" title="Edit output name">✏</button>
+        </div>
+      </td>
+      <td>
+        <div class="actions-cell">
+          <button class="btn btn-green btn-sm" onclick="createOne(${row.id})">✨ Create</button>
+          <button class="btn btn-blue btn-sm" onclick="dryRunOne(${row.id})">📋</button>
+          ${row.flag === 'M' ? `<button class="btn btn-grey btn-sm" onclick="toggleSplitPanel(${row.id})" title="Split into multiple volumes">Split</button>` : ''}
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+
+    // ── Sub-rows (files)
+    row.files.forEach((fname, i) => {
+      const sub = document.createElement('tr');
+      sub.className = `file-subrow ${isExp ? '' : 'hidden'}`;
+      sub.dataset.parent = row.id;
+      sub.innerHTML = `
+        <td colspan="2"></td>
+        <td colspan="6"><span class="dim">${i+1}.</span> <span class="fname">${fname}</span></td>`;
+      tbody.appendChild(sub);
+    });
+
+    // ── Split panel (if in split mode)
+    if (splitMode === row.id) {
+      const splitTr = document.createElement('tr');
+      splitTr.className = 'split-expanded';
+      splitTr.innerHTML = `<td colspan="8">${renderSplitPanel(row)}</td>`;
+      tbody.appendChild(splitTr);
+    }
+  });
+
+  updateSelBadge();
+}
+
+// ── Interactions ───────────────────────────────────────────────────────────
+function toggleExpand(id) {
+  if (expanded.has(id)) expanded.delete(id);
+  else expanded.add(id);
+  renderTable();
+}
+
+function toggleSelect(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+  updateSelBadge();
+}
+
+function selectAll() {
+  data.forEach(r => selected.add(r.id));
+  renderTable();
+}
+
+function deselectAll() {
+  selected.clear();
+  renderTable();
+}
+
+function updateSelBadge() {
+  const badge = document.getElementById('sel-badge');
+  if (selected.size > 0) {
+    badge.textContent = `${selected.size} selected`;
+    badge.classList.add('visible');
+  } else {
+    badge.classList.remove('visible');
+  }
+}
+
+function filterTable() {
+  currentFilter = document.getElementById('status-filter').value;
+  currentFlagFilter = document.getElementById('flag-filter').value;
+  renderTable();
+}
+
+function searchTable(val) {
+  currentSearch = val;
+  renderTable();
+}
+
+function editOutname(id) {
+  document.getElementById(`out-text-${id}`).style.display = 'none';
+  const inp = document.getElementById(`out-input-${id}`);
+  inp.style.display = 'inline-block';
+  inp.focus();
+  inp.select();
+}
+
+function saveOutname(id) {
+  const inp = document.getElementById(`out-input-${id}`);
+  const row = data.find(r => r.id === id);
+  if (row && inp.value.trim()) row.outname = inp.value.trim();
+  renderTable();
+}
+
+function outnameKey(e, id) {
+  if (e.key === 'Enter') saveOutname(id);
+  if (e.key === 'Escape') renderTable();
+}
+
+function toggleSkipped() {
+  const body  = document.getElementById('skipped-body');
+  const arrow = document.getElementById('skipped-arrow');
+  if (body.style.display === 'none') {
+    body.style.display = 'block';
+    arrow.textContent = '▼';
+  } else {
+    body.style.display = 'none';
+    arrow.textContent = '▶';
+  }
+}
+
+// ── Console ────────────────────────────────────────────────────────────────
+function showConsole() {
+  document.getElementById('console-panel').classList.remove('hidden');
+  document.getElementById('console-toggle').classList.add('panel-open');
+  document.body.classList.add('console-open');
+}
+
+function closeConsole() {
+  document.getElementById('console-panel').classList.add('hidden');
+  document.getElementById('console-toggle').classList.remove('panel-open');
+  document.body.classList.remove('console-open');
+}
+
+function toggleConsole() {
+  const panel = document.getElementById('console-panel');
+  if (panel.classList.contains('hidden')) showConsole();
+  else closeConsole();
+}
+
+function addLog(msg, cls='log-info') {
+  const out = document.getElementById('console-output');
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = msg;
+  out.appendChild(line);
+  out.scrollTop = out.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('console-output').innerHTML = '';
+}
+
+// ── Scan ───────────────────────────────────────────────────────────────────
+async function scanFolders() {
+  const path = document.getElementById('source-path').value.trim();
+  if (!path) { addLog('⚠ Enter a source path first.', 'log-warn'); showConsole(); return; }
+
+  const btn = document.getElementById('scan-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Scanning…';
+
+  clearLog();
+  showConsole();
+  addLog('🔍 Scanning: ' + path, 'log-info');
+
+  try {
+    const resp = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    });
+    const json = await resp.json();
+    if (!resp.ok) {
+      addLog('✖ ' + (json.error || 'Scan failed'), 'log-err');
+      return;
+    }
+    data = json.results;
+    selected.clear();
+    expanded.clear();
+    renderTable();
+    updateStats(json.results, json.skipped);
+    renderSkipped(json.skipped);
+    addLog('✔ Scan complete — ' + data.length + ' series found, ' + json.skipped.length + ' folders skipped', 'log-ok');
+  } catch (e) {
+    addLog('✖ Network error: ' + e.message, 'log-err');
+    addLog('  (Is comic_volume_creator_server.py running?)', 'log-warn');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔍 Scan Folders';
+  }
+}
+
+function updateStats(results, skipped) {
+  document.getElementById('stat-ready').textContent  = results.filter(r => r.status === 'ready').length;
+  document.getElementById('stat-small').textContent  = results.filter(r => r.flag === 'S' && r.status !== 'exists').length;
+  document.getElementById('stat-exists').textContent = results.filter(r => r.status === 'exists').length;
+  document.getElementById('stat-skipped').textContent = skipped.length;
+  document.getElementById('stat-total').textContent  = results.length;
+}
+
+function renderSkipped(skipped) {
+  const section = document.getElementById('skipped-section');
+  const body    = document.getElementById('skipped-body');
+  const label   = document.getElementById('skipped-toggle-label');
+  if (!skipped.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  label.textContent = '⚠ ' + skipped.length + ' Skipped Folders (contain sub-subfolders — need manual attention)';
+  body.innerHTML = '';
+  body.style.display = 'none';
+  document.getElementById('skipped-arrow').textContent = '▶';
+  skipped.forEach(sk => {
+    const row = document.createElement('div');
+    row.className = 'skipped-row';
+    row.innerHTML =
+      '<span class="path">' + sk.path + '</span>' +
+      '<span class="count">' + sk.subcount + ' subfolder' + (sk.subcount !== 1 ? 's' : '') + '</span>';
+    body.appendChild(row);
+  });
+}
+
+let _confirmId = null;
+
+function createOne(id) {
+  const row = data.find(r => r.id === id);
+  _confirmId = id;
+
+  // Output name (editable)
+  document.getElementById('confirm-outname').value = row.outname + '.cbz';
+
+  // Command block
+  const pattern = row.series + '*.*';
+  const lines = [
+    'create_cbz_direct(',
+    '  path   = "' + row.folder + '/",',
+    '  files  = ' + row.files.length + ' files  [pattern: "' + pattern + '"],',
+    '  outname= "' + row.outname + '"',
+    ')',
+    '',
+    '# Steps:',
+    '# 1. mkdir "' + row.outname + '/"',
+    '# 2. unrar/unzip each issue into own subfolder',
+    '# 3. zip -r "' + row.outname + '.cbz" .',
+    '# 4. move CBZ to destination folder',
+    '# 5. delete ' + row.files.length + ' source file(s)',
+    '# 6. rmdir working folder',
+  ];
+  document.getElementById('confirm-cmd').textContent = lines.join('\n');
+
+  document.getElementById('confirm-overlay').classList.add('open');
+  document.getElementById('confirm-outname').focus();
+  document.getElementById('confirm-outname').select();
+}
+
+function closeConfirm() {
+  document.getElementById('confirm-overlay').classList.remove('open');
+  _confirmId = null;
+}
+
+async function doConfirmedCreate() {
+  const row = data.find(r => r.id === _confirmId);
+  const outname = document.getElementById('confirm-outname').value.trim().replace(/\.cbz$/i, '');
+  if (!outname) return;
+
+  row.outname = outname;
+  closeConfirm();
+  clearLog();
+  showConsole();
+  addLog('✨ Creating: ' + outname + '.cbz', 'log-info');
+  addLog('   Folder: ' + row.folder, 'log-info');
+  addLog('   Files:  ' + row.files.length + ' source file(s)\n', 'log-info');
+
+  try {
+    const resp = await fetch('/api/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder: row.folder, files: row.files, outname })
+    });
+    const json = await resp.json();
+    // Stream log lines with a small delay for readability
+    const lines = (json.log || '').split('\n');
+    lines.forEach((line, i) => {
+      setTimeout(() => {
+        const cls = line.startsWith('  ✔') || line.startsWith('✔') ? 'log-ok'
+                  : line.startsWith('  ✖') || line.startsWith('✖') ? 'log-err'
+                  : line.startsWith('  ·') ? 'log-info'
+                  : line.match(/^\[/) ? 'log-info'
+                  : 'log-info';
+        addLog(line, cls);
+        if (i === lines.length - 1) {
+          if (json.success) {
+            // Remove row from data — file has been merged
+            data = data.filter(r => r.id !== row.id);
+            selected.delete(row.id);
+            renderTable();
+            updateStatsFromData();
+          }
+        }
+      }, i * 18);
+    });
+  } catch (e) {
+    addLog('✖ Network error: ' + e.message, 'log-err');
+    addLog('  (Is comic_volume_creator_server.py running?)', 'log-warn');
+  }
+}
+
+function updateStatsFromData() {
+  document.getElementById('stat-ready').textContent  = data.filter(r => r.status === 'ready').length;
+  document.getElementById('stat-small').textContent  = data.filter(r => r.flag === 'S' && r.status !== 'exists').length;
+  document.getElementById('stat-exists').textContent = data.filter(r => r.status === 'exists').length;
+  document.getElementById('stat-total').textContent  = data.length;
+}
+
+function dryRunOne(id) {
+  const row = data.find(r => r.id === id);
+  clearLog();
+  showConsole();
+  addLog('📋 DRY RUN: ' + row.outname + '.cbz', 'log-info');
+  addLog('   Folder: ' + row.folder + '/', 'log-info');
+  row.files.forEach(f => addLog('   · Would extract: ' + f, 'log-info'));
+  addLog('   · Would zip into: ' + row.outname + '.cbz', 'log-info');
+  addLog('   · Would delete ' + row.files.length + ' source file(s)', 'log-warn');
+  addLog('📋 Dry run complete — no files changed', 'log-ok');
+}
+
+async function createSelected() {
+  if (selected.size === 0) { alert('No series selected.'); return; }
+  const rows = data.filter(r => selected.has(r.id));
+  clearLog();
+  showConsole();
+  addLog('✨ Creating ' + rows.length + ' CBZ volumes…', 'log-info');
+  let succeeded = 0, failed = 0;
+  for (const row of rows) {
+    addLog('\n─── ' + row.series + ' (' + row.files.length + ' files) ───', 'log-info');
+    try {
+      const resp = await fetch('/api/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder: row.folder, files: row.files, outname: row.outname })
+      });
+      const json = await resp.json();
+      (json.log || '').split('\n').forEach(line => {
+        const cls = line.startsWith('  ✔') || line.startsWith('✔') ? 'log-ok'
+                  : line.startsWith('  ✖') || line.startsWith('✖') ? 'log-err'
+                  : 'log-info';
+        addLog(line, cls);
+      });
+      if (json.success) { succeeded++; data = data.filter(r => r.id !== row.id); selected.delete(row.id); }
+      else { failed++; }
+    } catch (e) {
+      addLog('✖ Network error: ' + e.message, 'log-err');
+      failed++;
+    }
+  }
+  addLog('\n' + (failed === 0 ? '✔' : '✖') + ' Done — ' + succeeded + ' created, ' + failed + ' failed', failed ? 'log-err' : 'log-ok');
+  renderTable();
+  updateStatsFromData();
+}
+
+function dryRun() {
+  if (selected.size === 0) { alert('No series selected.'); return; }
+  clearLog();
+  showConsole();
+  addLog('📋 DRY RUN for ' + selected.size + ' selected series:', 'log-info');
+  data.filter(r => selected.has(r.id)).forEach(row => {
+    addLog('   · ' + row.outname + '.cbz  (' + row.files.length + ' files)', 'log-info');
+    row.files.forEach(f => addLog('       ' + f, 'log-info'));
+  });
+  addLog('\n📋 No files would be changed', 'log-warn');
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+const THEMES = [
+  {
+    id: 'midnight-blue', name: 'Midnight Blue',
+    vars: {
+      '--bg':'#121212','--bg2':'#1e1e2e','--bg3':'#2a2a3e',
+      '--header-bg':'#16213e','--header-b':'#0f3460',
+      '--folder-bg':'#0f3460','--folder-b':'#1a3a6e',
+      '--accent':'#e94560','--accent2':'#a8dadc',
+      '--text':'#e0e0e0','--text-dim':'#888',
+      '--table-bg':'#1e1e1e','--table-head':'#2c2c2c','--table-row-h':'#252525','--table-b':'#2a2a2a',
+      '--input-bg':'#1a1a2e','--input-b':'#0f346080',
+      '--skipped-bg':'#1e1a2e','--skipped-b':'#6a1fa2','--skipped-hd':'#2a1a3e','--skipped-c':'#c084fc',
+      '--console-bg':'#0d0d1a','--console-hd':'#16213e',
+      '--toggle-bg':'#0f3460','--toggle-b':'#1a4a8a',
+    }
+  },
+  {
+    id: 'dark-crimson', name: 'Dark Crimson',
+    vars: {
+      '--bg':'#130a0a','--bg2':'#1f1010','--bg3':'#2e1515',
+      '--header-bg':'#1a0808','--header-b':'#5c0a0a',
+      '--folder-bg':'#3b0f0f','--folder-b':'#5c1a1a',
+      '--accent':'#ff6b6b','--accent2':'#ffd166',
+      '--text':'#f0e0e0','--text-dim':'#8a7070',
+      '--table-bg':'#1a1010','--table-head':'#2a1818','--table-row-h':'#221414','--table-b':'#2e1a1a',
+      '--input-bg':'#1e1010','--input-b':'#5c0a0a80',
+      '--skipped-bg':'#1e1018','--skipped-b':'#c0392b','--skipped-hd':'#2a1010','--skipped-c':'#ff9f9f',
+      '--console-bg':'#0d0505','--console-hd':'#1a0808',
+      '--toggle-bg':'#5c0a0a','--toggle-b':'#8b1a1a',
+    }
+  },
+  {
+    id: 'forest', name: 'Forest',
+    vars: {
+      '--bg':'#0a120a','--bg2':'#101e10','--bg3':'#152a15',
+      '--header-bg':'#0a1a0a','--header-b':'#1a4a1a',
+      '--folder-bg':'#0f3010','--folder-b':'#1a4a1a',
+      '--accent':'#6bcb77','--accent2':'#a8e6cf',
+      '--text':'#d0f0d0','--text-dim':'#6a8a6a',
+      '--table-bg':'#0f180f','--table-head':'#182a18','--table-row-h':'#142014','--table-b':'#1a2a1a',
+      '--input-bg':'#0f1a0f','--input-b':'#1a4a1a80',
+      '--skipped-bg':'#101a18','--skipped-b':'#2d7a4f','--skipped-hd':'#0f1e18','--skipped-c':'#6edbb0',
+      '--console-bg':'#060d06','--console-hd':'#0a1a0a',
+      '--toggle-bg':'#1a4a1a','--toggle-b':'#2a6a2a',
+    }
+  },
+  {
+    id: 'amber', name: 'Amber',
+    vars: {
+      '--bg':'#120e00','--bg2':'#1e1800','--bg3':'#2a2200',
+      '--header-bg':'#1a1200','--header-b':'#4a3200',
+      '--folder-bg':'#3a2800','--folder-b':'#5a4000',
+      '--accent':'#ffb300','--accent2':'#ffd54f',
+      '--text':'#f0e8cc','--text-dim':'#8a7a50',
+      '--table-bg':'#1a1400','--table-head':'#2a2000','--table-row-h':'#221a00','--table-b':'#2e2400',
+      '--input-bg':'#1e1600','--input-b':'#4a320080',
+      '--skipped-bg':'#1e1800','--skipped-b':'#e65100','--skipped-hd':'#2a1e00','--skipped-c':'#ffb74d',
+      '--console-bg':'#0d0a00','--console-hd':'#1a1200',
+      '--toggle-bg':'#4a3200','--toggle-b':'#6a4a00',
+    }
+  },
+  {
+    id: 'ocean', name: 'Ocean',
+    vars: {
+      '--bg':'#00141a','--bg2':'#001e26','--bg3':'#002a36',
+      '--header-bg':'#001826','--header-b':'#005580',
+      '--folder-bg':'#003850','--folder-b':'#005580',
+      '--accent':'#00b4d8','--accent2':'#90e0ef',
+      '--text':'#cce8f0','--text-dim':'#5a8898',
+      '--table-bg':'#001620','--table-head':'#002030','--table-row-h':'#001a28','--table-b':'#002530',
+      '--input-bg':'#001a28','--input-b':'#00558080',
+      '--skipped-bg':'#00181e','--skipped-b':'#0077b6','--skipped-hd':'#001820','--skipped-c':'#48cae4',
+      '--console-bg':'#000d12','--console-hd':'#001826',
+      '--toggle-bg':'#005580','--toggle-b':'#007aaa',
+    }
+  },
+  {
+    id: 'slate', name: 'Slate',
+    vars: {
+      '--bg':'#0e0e0e','--bg2':'#181818','--bg3':'#222222',
+      '--header-bg':'#141414','--header-b':'#383838',
+      '--folder-bg':'#1c1c1c','--folder-b':'#323232',
+      '--accent':'#9e9e9e','--accent2':'#bdbdbd',
+      '--text':'#e0e0e0','--text-dim':'#757575',
+      '--table-bg':'#161616','--table-head':'#1e1e1e','--table-row-h':'#1a1a1a','--table-b':'#222222',
+      '--input-bg':'#181818','--input-b':'#38383880',
+      '--skipped-bg':'#181818','--skipped-b':'#616161','--skipped-hd':'#1c1c1c','--skipped-c':'#9e9e9e',
+      '--console-bg':'#0a0a0a','--console-hd':'#141414',
+      '--toggle-bg':'#383838','--toggle-b':'#4a4a4a',
+    }
+  },
+  {
+    id: 'purple-night', name: 'Purple Night',
+    vars: {
+      '--bg':'#0e0014','--bg2':'#160020','--bg3':'#200030',
+      '--header-bg':'#12001a','--header-b':'#3a0060',
+      '--folder-bg':'#280050','--folder-b':'#3a0060',
+      '--accent':'#d146f0','--accent2':'#c084fc',
+      '--text':'#ead0f0','--text-dim':'#7a508a',
+      '--table-bg':'#140018','--table-head':'#200028','--table-row-h':'#1a0020','--table-b':'#280038',
+      '--input-bg':'#180022','--input-b':'#3a006080',
+      '--skipped-bg':'#160018','--skipped-b':'#7b2d8b','--skipped-hd':'#1e001e','--skipped-c':'#e040fb',
+      '--console-bg':'#08000e','--console-hd':'#12001a',
+      '--toggle-bg':'#3a0060','--toggle-b':'#5500a0',
+    }
+  },
+  {
+    id: 'nord', name: 'Nord',
+    vars: {
+      '--bg':'#2e3440','--bg2':'#3b4252','--bg3':'#434c5e',
+      '--header-bg':'#2e3440','--header-b':'#4c566a',
+      '--folder-bg':'#3b4252','--folder-b':'#4c566a',
+      '--accent':'#bf616a','--accent2':'#88c0d0',
+      '--text':'#eceff4','--text-dim':'#a0a8b8',
+      '--table-bg':'#2e3440','--table-head':'#3b4252','--table-row-h':'#363e4e','--table-b':'#4c566a',
+      '--input-bg':'#3b4252','--input-b':'#4c566a80',
+      '--skipped-bg':'#3b3a52','--skipped-b':'#b48ead','--skipped-hd':'#3b3a5e','--skipped-c':'#d8a4c8',
+      '--console-bg':'#262c38','--console-hd':'#2e3440',
+      '--toggle-bg':'#4c566a','--toggle-b':'#5e6a80',
+    }
+  },
+  {
+    id: 'light', name: 'Light',
+    vars: {
+      '--bg':'#f5f5f5','--bg2':'#ebebeb','--bg3':'#dcdcdc',
+      '--header-bg':'#1a237e','--header-b':'#283593',
+      '--folder-bg':'#283593','--folder-b':'#3949ab',
+      '--accent':'#e53935','--accent2':'#1565c0',
+      '--text':'#212121','--text-dim':'#757575',
+      '--table-bg':'#ffffff','--table-head':'#eeeeee','--table-row-h':'#f9f9f9','--table-b':'#e0e0e0',
+      '--input-bg':'#ffffff','--input-b':'#90caf980',
+      '--skipped-bg':'#f3e5f5','--skipped-b':'#7b1fa2','--skipped-hd':'#ede7f6','--skipped-c':'#7b1fa2',
+      '--console-bg':'#fafafa','--console-hd':'#e8eaf6',
+      '--toggle-bg':'#283593','--toggle-b':'#3949ab',
+    }
+  },
+  {
+    id: 'sepia', name: 'Sepia',
+    vars: {
+      '--bg':'#f5efe6','--bg2':'#ede3d5','--bg3':'#ddd0bb',
+      '--header-bg':'#5d4037','--header-b':'#795548',
+      '--folder-bg':'#795548','--folder-b':'#8d6e63',
+      '--accent':'#bf360c','--accent2':'#4e342e',
+      '--text':'#3e2723','--text-dim':'#795548',
+      '--table-bg':'#faf5ee','--table-head':'#ede3d5','--table-row-h':'#f2eae0','--table-b':'#d5c5b0',
+      '--input-bg':'#faf5ee','--input-b':'#79554880',
+      '--skipped-bg':'#f5e6dc','--skipped-b':'#a1460e','--skipped-hd':'#eed8c8','--skipped-c':'#a1460e',
+      '--console-bg':'#f0e8d8','--console-hd':'#e8dcc8',
+      '--toggle-bg':'#795548','--toggle-b':'#8d6e63',
+    }
+  },
+];
+
+let activeTheme = 'midnight-blue';
+
+function openSettings() {
+  document.getElementById('settings-panel').classList.add('open');
+  document.getElementById('settings-overlay').classList.add('open');
+  renderSwatches();
+}
+
+function closeSettings() {
+  document.getElementById('settings-panel').classList.remove('open');
+  document.getElementById('settings-overlay').classList.remove('open');
+}
+
+function openHelp() {
+  document.getElementById('help-modal').classList.add('open');
+}
+
+function closeHelp() {
+  document.getElementById('help-modal').classList.remove('open');
+}
+
+function lsGet(key, fallback) {
+  try { return localStorage.getItem(key) || fallback; } catch(e) { return fallback; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, val); } catch(e) {}
+}
+
+function applyTheme(id) {
+  const theme = THEMES.find(t => t.id === id);
+  if (!theme) return;
+  activeTheme = id;
+  const root = document.documentElement;
+  Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+  lsSet('cvc-theme', id);
+  renderSwatches();
+}
+
+function renderSwatches() {
+  const grid = document.getElementById('theme-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  THEMES.forEach(theme => {
+    const v = theme.vars;
+    const div = document.createElement('div');
+    div.className = 'theme-swatch' + (theme.id === activeTheme ? ' active' : '');
+    div.onclick = () => applyTheme(theme.id);
+    div.title = theme.name;
+    div.innerHTML =
+      '<div class="swatch-preview">' +
+        '<div class="swatch-bar" style="background:' + v['--header-bg'] + '"></div>' +
+        '<div class="swatch-body" style="background:' + v['--bg'] + '">' +
+          '<div class="swatch-dot" style="background:' + v['--accent'] + '"></div>' +
+          '<div class="swatch-line" style="background:' + v['--accent2'] + '"></div>' +
+          '<div class="swatch-dot" style="background:' + v['--text-dim'] + '"></div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="swatch-label" style="background:' + v['--bg2'] + ';color:' + v['--text'] + '">' + theme.name + '</div>';
+    grid.appendChild(div);
+  });
+}
+
+function setFontSize(size) {
+  const map = { small: '13px', medium: '15px', large: '17px' };
+  document.documentElement.style.fontSize = map[size] || '15px';
+  lsSet('cvc-fontsize', size);
+}
+
+function setDensity(density) {
+  const pad = { compact: '4px 12px', normal: '8px 12px', relaxed: '13px 12px' };
+  document.querySelectorAll('td').forEach(td => {
+    if (!td.closest('tr.file-subrow')) td.style.padding = pad[density] || pad.normal;
+  });
+  lsSet('cvc-density', density);
+}
+
+function loadSavedSettings() {
+  applyTheme(lsGet('cvc-theme', 'midnight-blue'));
+  const savedFont = lsGet('cvc-fontsize', null);
+  if (savedFont) setFontSize(savedFont);
+  const savedDensity = lsGet('cvc-density', null);
+  if (savedDensity) setDensity(savedDensity);
+}
+
+// ── Split Volumes ──────────────────────────────────────────────────────────
+
+function toggleSplitPanel(id) {
+  if (splitMode === id) {
+    splitMode = null;
+    delete splitState[id];
+  } else {
+    splitMode = id;
+    const row = data.find(r => r.id === id);
+    if (row) {
+      if (!splitState[id]) {
+        splitState[id] = {
+          fileAssignments: {},  // {filename: 'v01' | 'v02', ...}
+          volumes: {}            // {volumeName: [files]}
+        };
+      }
+    }
+  }
+  renderTable();
+}
+
+function renderSplitPanel(row) {
+  const st = splitState[row.id] || { fileAssignments: {}, volumes: {} };
+
+  // Get list of selected files
+  const selectedFiles = row.files.filter(f => st.fileAssignments[f]);
+  const selectedFilesList = selectedFiles.length > 0
+    ? selectedFiles.map((f, i) => (i + 1) + '. ' + f.substring(0, 40)).join('<br>')
+    : '<em>Select files above to assign</em>';
+
+  // Build volume preview
+  const volumes = {};
+  row.files.forEach(f => {
+    if (st.fileAssignments[f]) {
+      const vol = st.fileAssignments[f];
+      if (!volumes[vol]) volumes[vol] = [];
+      volumes[vol].push(f);
+    }
+  });
+
+  // Check which volumes already exist
+  const existingVols = {};
+  const volPattern = /\b(v\d+)\b/i;
+  try {
+    // Quick heuristic: if row.outname contains v01, likely v01 exists
+    const m = row.outname.match(/\bv(\d+)\b/);
+    if (m) existingVols['v' + String(parseInt(m[1])).padStart(2, '0')] = true;
+  } catch (e) {}
+
+  const volumeCardsHTML = Object.entries(volumes)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([volName, files]) => `
+      <div class="volume-card">
+        <div class="volume-card-header">
+          <span class="volume-card-badge">${volName}</span>
+          <span class="volume-card-count">(${files.length} file${files.length !== 1 ? 's' : ''})</span>
+          <span class="volume-card-status">WILL CREATE</span>
+        </div>
+        <div class="volume-card-files">
+          ${files.map(f => `<div class="file">• ${f.substring(0, 45)}</div>`).join('')}
+        </div>
+      </div>
+    `).join('');
+
+  return `
+    <div class="split-panel">
+      <!-- LEFT: Files ──────────────────────────────────────────────────────── -->
+      <div class="split-files-section">
+        <div class="split-section-title">📋 Select files for volume assignment</div>
+        <div class="file-list">
+          ${row.files.map(f => `
+            <div class="file-item">
+              <input type="checkbox"
+                data-rid="${row.id}"
+                data-file="${f}"
+                ${st.fileAssignments[f] ? 'checked' : ''}
+                onchange="updateSplitPreview(${row.id})">
+              <span class="file-name" title="${f}">${f}</span>
+              <span class="file-volume-badge ${st.fileAssignments[f] ? '' : 'unassigned'}">
+                ${st.fileAssignments[f] || '—'}
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- CENTER: Volume Assignment ────────────────────────────────────────── -->
+      <div class="split-control">
+        <div class="split-section-title">Assign Volume</div>
+
+        <div class="selected-files-display empty" id="sel-files-${row.id}">
+          <em>Select files to assign them</em>
+        </div>
+
+        <div class="volume-input-group">
+          <input type="text"
+            id="vol-input-${row.id}"
+            placeholder="v01"
+            value="">
+          <button onclick="assignVolumeToSelected(${row.id})">Assign</button>
+        </div>
+
+        <button class="suggest-button" onclick="suggestSplit(${row.id})">
+          💡 Suggest Split
+        </button>
+
+        <div class="split-hint">
+          <strong>Tip:</strong> Select files, enter volume name (e.g., v01, v02), click Assign.
+        </div>
+      </div>
+
+      <!-- RIGHT: Preview ─────────────────────────────────────────────────── -->
+      <div class="split-preview">
+        <div class="split-section-title">📊 Volume Preview</div>
+        ${volumeCardsHTML || '<em style="color: #666">No volumes assigned yet</em>'}
+      </div>
+    </div>
+
+    <div class="split-actions">
+      <button class="btn btn-grey" onclick="toggleSplitPanel(${row.id})">✕ Cancel</button>
+      <button class="btn btn-blue" onclick="dryRunSplit(${row.id})">📋 Dry Run</button>
+      <button class="btn btn-green" onclick="createSplitVolumes(${row.id})">✨ Create Volumes</button>
+    </div>
+  `;
+}
+
+function updateSplitPreview(id) {
+  const row = data.find(r => r.id === id);
+  if (!row) return;
+
+  const st = splitState[id] || { fileAssignments: {}, volumes: {} };
+  const checkboxes = Array.from(document.querySelectorAll(`input[data-rid="${id}"]`));
+  const selected = checkboxes.filter(c => c.checked).map(c => c.dataset.file);
+
+  // Update display list
+  const display = document.getElementById(`sel-files-${id}`);
+  if (selected.length === 0) {
+    display.classList.add('empty');
+    display.innerHTML = '<em>Select files to assign them</em>';
+    document.getElementById(`vol-input-${id}`).value = '';
+  } else {
+    display.classList.remove('empty');
+    display.innerHTML = selected.map((f, i) => (i + 1) + '. ' + f.substring(0, 35)).join('<br>');
+
+    // Auto-suggest next volume number
+    const existingVols = new Set();
+    Object.values(st.fileAssignments).forEach(v => existingVols.add(v));
+    if (existingVols.size > 0) {
+      const maxNum = Math.max(...Array.from(existingVols)
+        .map(v => parseInt(v.replace(/\D/g, '')) || 0));
+      const nextVol = 'v' + String(maxNum + 1).padStart(2, '0');
+      document.getElementById(`vol-input-${id}`).value = nextVol;
+    } else {
+      document.getElementById(`vol-input-${id}`).value = 'v01';
+    }
+  }
+
+  // Store current selection temporarily for assign
+  st._tempSelected = selected;
+}
+
+function assignVolumeToSelected(id) {
+  const row = data.find(r => r.id === id);
+  if (!row) return;
+
+  const st = splitState[id];
+  const volName = document.getElementById(`vol-input-${id}`).value.trim().toLowerCase();
+  if (!volName) { alert('Enter a volume name (e.g., v01)'); return; }
+
+  const selected = st._tempSelected || [];
+  if (selected.length === 0) { alert('Select files first'); return; }
+
+  selected.forEach(f => {
+    st.fileAssignments[f] = volName;
+  });
+  delete st._tempSelected;
+
+  renderTable();
+  setTimeout(() => updateSplitPreview(id), 50);
+}
+
+function suggestSplit(id) {
+  const row = data.find(r => r.id === id);
+  if (!row) return;
+
+  // Simple balanced split: divide files evenly
+  const n = row.files.length;
+  const volumes = n > 15 ? 3 : n > 8 ? 2 : 1;
+  const filesPerVol = Math.ceil(n / volumes);
+
+  const st = splitState[id];
+  st.fileAssignments = {};
+  let volNum = 1;
+  row.files.forEach((f, i) => {
+    if (i > 0 && i % filesPerVol === 0) volNum++;
+    st.fileAssignments[f] = 'v' + String(volNum).padStart(2, '0');
+  });
+
+  renderTable();
+  setTimeout(() => updateSplitPreview(id), 50);
+}
+
+function dryRunSplit(id) {
+  const row = data.find(r => r.id === id);
+  const st = splitState[id];
+  const volumes = {};
+  row.files.forEach(f => {
+    if (st.fileAssignments[f]) {
+      const v = st.fileAssignments[f];
+      if (!volumes[v]) volumes[v] = [];
+      volumes[v].push(f);
+    }
+  });
+
+  clearLog();
+  showConsole();
+  addLog(`📋 DRY RUN: Split ${row.series} into ${Object.keys(volumes).length} volume(s)`, 'log-info');
+  Object.entries(volumes).forEach(([vol, files]) => {
+    addLog(`\n${vol}: ${files.length} files`, 'log-info');
+    files.forEach(f => addLog(`   · ${f}`, 'log-info'));
+  });
+  addLog(`\n📋 No files would be changed`, 'log-warn');
+}
+
+async function createSplitVolumes(id) {
+  const row = data.find(r => r.id === id);
+  const st = splitState[id];
+
+  // Group files by volume
+  const volumes = {};
+  row.files.forEach(f => {
+    if (st.fileAssignments[f]) {
+      const v = st.fileAssignments[f];
+      if (!volumes[v]) volumes[v] = [];
+      volumes[v].push(f);
+    }
+  });
+
+  if (Object.keys(volumes).length === 0) {
+    alert('Assign files to volumes first');
+    return;
+  }
+
+  clearLog();
+  showConsole();
+  addLog(`✨ Creating ${Object.keys(volumes).length} split volume(s) for ${row.series}…`, 'log-info');
+
+  let created = 0, failed = 0;
+  for (const [volName, files] of Object.entries(volumes)) {
+    addLog(`\n─── ${volName} (${files.length} files) ───`, 'log-info');
+    try {
+      const resp = await fetch('/api/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ folder: row.folder, files, outname: row.series + ' ' + volName })
+      });
+      const json = await resp.json();
+      (json.log || '').split('\n').forEach(line => {
+        const cls = line.startsWith('  ✔') || line.startsWith('✔') ? 'log-ok'
+                  : line.startsWith('  ✖') || line.startsWith('✖') ? 'log-err'
+                  : 'log-info';
+        addLog(line, cls);
+      });
+      if (json.success) created++;
+      else failed++;
+    } catch (e) {
+      addLog(`✖ Network error: ${e.message}`, 'log-err');
+      failed++;
+    }
+  }
+
+  addLog(`\n${failed === 0 ? '✔' : '✖'} Done — ${created} created, ${failed} failed`, failed ? 'log-err' : 'log-ok');
+
+  if (created > 0) {
+    // Remove row from data (files were merged)
+    data = data.filter(r => r.id !== row.id);
+    selected.delete(row.id);
+    splitMode = null;
+    delete splitState[id];
+    renderTable();
+    updateStatsFromData();
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeConfirm(); closeSettings(); closeHelp(); }
+  if (e.key === 'Enter' && document.getElementById('confirm-overlay').classList.contains('open')) {
+    doConfirmedCreate();
+  }
+  if (e.key === 'Enter' && document.getElementById('source-path') === document.activeElement) {
+    scanFolders();
+  }
+});
+loadSavedSettings();
+// Show placeholder until first scan
+document.getElementById('table-body').innerHTML =
+  '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--text-dim);font-size:0.9rem">' +
+  'Enter a source root path above and click <strong>🔍 Scan Folders</strong> to load results.' +
+  '</td></tr>';
+</script>
+</body>
+</html>
