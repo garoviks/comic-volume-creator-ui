@@ -100,6 +100,6 @@ Click the **"❓ Help"** button in the app for in-app help and FAQs.
 
 **Location**: `/home/nesha/scripts/comic_volume_creator/`
 
-**Version**: v0.1 (Beta)
+**Version**: v1.1
 
 **Last Updated**: April 2024

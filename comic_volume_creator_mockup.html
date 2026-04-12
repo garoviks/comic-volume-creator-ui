@@ -1182,6 +1182,8 @@
       <span class="selected-badge" id="sel-badge">0 selected</span>
     </div>
     <div class="toolbar-right">
+      <button class="btn btn-grey btn-sm" onclick="expandAll()">⬇ Expand All</button>
+      <button class="btn btn-grey btn-sm" onclick="collapseAll()">⬆ Collapse All</button>
       <button class="btn btn-grey btn-sm" onclick="selectAll()">☑ Select All</button>
       <button class="btn btn-grey btn-sm" onclick="deselectAll()">☐ Deselect All</button>
       <button class="btn btn-blue btn-sm" onclick="dryRun()">📋 Dry Run</button>
@@ -1215,6 +1217,7 @@
   <div class="console-header">
     <span>🖥 Console Output</span>
     <span class="spacer"></span>
+    <button class="console-close" style="background:var(--toggle-bg);border:1px solid var(--toggle-b);color:var(--accent2);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;margin-right:8px;font-weight:600;" id="save-output-btn" onclick="saveConsoleOutput()" title="Save output to HTML file">💾 Save</button>
     <button class="console-close" onclick="closeConsole()">✕</button>
   </div>
   <div id="console-output"></div>
@@ -1359,6 +1362,7 @@ let currentFlagFilter = 'all';
 let currentSearch  = '';
 let splitMode      = null;          // id of row in split mode
 let splitState     = {};            // {rowId: {fileAssignments: {filename: volume}, ...}}
+let isDryRunMode   = false;         // true if last console output was from dry run
 
 // ── Render ─────────────────────────────────────────────────────────────────
 function statusBadge(s) {
@@ -1428,9 +1432,10 @@ function renderTable() {
       const sub = document.createElement('tr');
       sub.className = `file-subrow ${isExp ? '' : 'hidden'}`;
       sub.dataset.parent = row.id;
+      const fileSize = row.file_sizes && row.file_sizes[fname] ? `(${row.file_sizes[fname]} MB)` : '';
       sub.innerHTML = `
         <td colspan="2"></td>
-        <td colspan="6"><span class="dim">${i+1}.</span> <span class="fname">${fname}</span></td>`;
+        <td colspan="6"><span class="dim">${i+1}.</span> <span class="fname">${fname}</span> <span class="dim">${fileSize}</span></td>`;
       tbody.appendChild(sub);
     });
 
@@ -1450,6 +1455,26 @@ function renderTable() {
 function toggleExpand(id) {
   if (expanded.has(id)) expanded.delete(id);
   else expanded.add(id);
+  renderTable();
+}
+
+function expandAll() {
+  const rows = data.filter(r => {
+    if (currentFilter !== 'all') {
+      if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
+      if (currentFilter === 'exists' && r.status !== 'exists') return false;
+      if (currentFilter === 'single' && r.status !== 'single') return false;
+    }
+    if (currentFlagFilter !== 'all' && r.flag !== currentFlagFilter) return false;
+    if (currentSearch && !r.series.toLowerCase().includes(currentSearch.toLowerCase())) return false;
+    return true;
+  });
+  rows.forEach(r => expanded.add(r.id));
+  renderTable();
+}
+
+function collapseAll() {
+  expanded.clear();
   renderTable();
 }
 
@@ -1718,6 +1743,7 @@ function dryRunOne(id) {
   const row = data.find(r => r.id === id);
   clearLog();
   showConsole();
+  isDryRunMode = true;
   addLog('📋 DRY RUN: ' + row.outname + '.cbz', 'log-info');
   addLog('   Folder: ' + row.folder + '/', 'log-info');
   row.files.forEach(f => addLog('   · Would extract: ' + f, 'log-info'));
@@ -1764,12 +1790,102 @@ function dryRun() {
   if (selected.size === 0) { alert('No series selected.'); return; }
   clearLog();
   showConsole();
+  isDryRunMode = true;
   addLog('📋 DRY RUN for ' + selected.size + ' selected series:', 'log-info');
   data.filter(r => selected.has(r.id)).forEach(row => {
     addLog('   · ' + row.outname + '.cbz  (' + row.files.length + ' files)', 'log-info');
     row.files.forEach(f => addLog('       ' + f, 'log-info'));
   });
   addLog('\n📋 No files would be changed', 'log-warn');
+}
+
+// ── Save Output ────────────────────────────────────────────────────────────
+
+function saveConsoleOutput() {
+  const output = document.getElementById('console-output');
+  if (!output || output.children.length === 0) {
+    alert('No console output to save');
+    return;
+  }
+
+  const timestamp = new Date().toISOString().split('T')[0];
+  const filename = isDryRunMode ? `dry-run-${timestamp}.html` : `console-output-${timestamp}.html`;
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Comic Volume Creator — ${isDryRunMode ? 'Dry Run' : 'Console'} Output</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0d0d1a;
+      color: #e0e0e0;
+      padding: 24px;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: #1e1e2e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .header {
+      border-bottom: 2px solid #0f3460;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      color: #e94560;
+      font-size: 1.3rem;
+      margin-bottom: 4px;
+    }
+    .header p {
+      color: #888;
+      font-size: 0.85rem;
+    }
+    .output {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+    .log-ok { color: #81c784; }
+    .log-err { color: #e57373; }
+    .log-info { color: #64b5f6; }
+    .log-warn { color: #ffb74d; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🖥 Comic Volume Creator — ${isDryRunMode ? 'Dry Run' : 'Console'} Output</h1>
+      <p>Saved: ${new Date().toLocaleString()}</p>
+    </div>
+    <div class="output">
+${Array.from(output.children).map(el => {
+  const text = el.textContent;
+  const className = el.className;
+  return `<span class="${className}">${text}</span>`;
+}).join('\n')}
+    </div>
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ── Settings ───────────────────────────────────────────────────────────────

@@ -142,11 +142,22 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
                 status = 'single'
             else:
                 status = 'ready'
+            # Calculate file sizes
+            file_sizes = {}
+            for fname in files:
+                fpath = os.path.join(folder_path, fname)
+                try:
+                    size_mb = os.path.getsize(fpath) / (1024 * 1024)
+                    file_sizes[fname] = round(size_mb, 1)
+                except OSError:
+                    file_sizes[fname] = 0
+
             results.append({
                 'id':     row_id,
                 'folder': folder_path,
                 'series': series,
                 'files':  files,
+                'file_sizes': file_sizes,
                 'flag':   flag,
                 'status': status,
                 'outname': outname,

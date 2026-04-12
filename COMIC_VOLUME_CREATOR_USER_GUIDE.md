@@ -748,7 +748,13 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 
 ## Version
 
-**Comic Volume Creator v0.1** — Beta Release
-- Last updated: 2024
+**Comic Volume Creator v1.1**
+- Last updated: April 2024
 - Server: comic_volume_creator_server.py
 - UI: comic_volume_creator_mockup.html
+
+### v1.1 Changes
+- ✨ Expand All / Collapse All buttons in toolbar
+- 📊 File size (MB) display in file details
+- 💾 Save dry run output to HTML file
+- 🎨 Improved UI consistency
