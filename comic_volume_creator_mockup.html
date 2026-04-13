@@ -1426,6 +1426,7 @@ function renderTable() {
         <div class="actions-cell">
           <button class="btn btn-green btn-sm" onclick="createOne(${row.id})">✨ Create</button>
           <button class="btn btn-blue btn-sm" onclick="dryRunOne(${row.id})">📋</button>
+          <button class="btn btn-grey btn-sm" onclick="openFolder('${row.folder.replace(/'/g, "\\'")}')}" title="Open folder" style="padding: 6px 8px;">📁</button>
           ${row.flag === 'M' ? `<button class="btn btn-grey btn-sm" onclick="toggleSplitPanel(${row.id})" title="Split into multiple volumes">Split</button>` : ''}
         </div>
       </td>`;
@@ -1764,6 +1765,10 @@ function updateStatsFromData() {
   document.getElementById('stat-small').textContent  = data.filter(r => r.flag === 'S' && r.status !== 'exists').length;
   document.getElementById('stat-exists').textContent = data.filter(r => r.status === 'exists').length;
   document.getElementById('stat-total').textContent  = data.length;
+}
+
+function openFolder(folderPath) {
+  window.open('/api/browse?path=' + encodeURIComponent(folderPath), '_blank');
 }
 
 function dryRunOne(id) {

@@ -7,6 +7,8 @@ Usage:
 
 Endpoints:
     GET  /              — serves comic_volume_creator_mockup.html
+    GET  /api/browse    — query: ?path=/folder/path
+                          returns: HTML listing of folder contents
     POST /api/scan      — body: {"path": "/some/comics/root"}
                           returns: {"results": [...], "skipped": [...]}
     POST /api/create    — body: {"folder": "...", "files": [...], "outname": "..."}
@@ -375,6 +377,113 @@ class Handler(BaseHTTPRequestHandler):
         raw    = self.rfile.read(length)
         return json.loads(raw) if raw else {}
 
+    def send_folder_listing(self, folder_path: str):
+        """Send HTML listing of folder contents."""
+        try:
+            entries = sorted(os.scandir(folder_path), key=lambda e: (not e.is_dir(), e.name.lower()))
+        except OSError:
+            entries = []
+
+        rows = []
+        for entry in entries:
+            is_dir = entry.is_dir()
+            name = entry.name
+            size = ''
+            if not is_dir:
+                try:
+                    size_b = entry.stat().st_size
+                    if size_b >= 1024**3:
+                        size = f'{size_b / 1024**3:.1f} GB'
+                    elif size_b >= 1024**2:
+                        size = f'{size_b / 1024**2:.1f} MB'
+                    else:
+                        size = f'{size_b / 1024:.1f} KB'
+                except OSError:
+                    size = '—'
+
+            icon = '📁' if is_dir else '📄'
+            rows.append(f'<tr><td>{icon}</td><td>{name}</td><td style="text-align:right; color:#888; font-size:0.9rem;">{size}</td></tr>')
+
+        html = f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Folder: {os.path.basename(folder_path)}</title>
+  <style>
+    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+    body {{
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #121212;
+      color: #e0e0e0;
+      padding: 20px;
+    }}
+    .container {{
+      max-width: 900px;
+      margin: 0 auto;
+      background: #1e1e2e;
+      border: 1px solid #0f3460;
+      border-radius: 8px;
+      padding: 20px;
+    }}
+    h1 {{
+      color: #e94560;
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+      word-break: break-all;
+    }}
+    .breadcrumb {{
+      font-size: 0.85rem;
+      color: #888;
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #0d0d1a;
+      border-radius: 4px;
+      overflow-x: auto;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+    }}
+    tr:hover {{
+      background: #2a2a3e;
+    }}
+    td {{
+      padding: 10px;
+      border-bottom: 1px solid #2a2a3e;
+    }}
+    td:first-child {{
+      width: 30px;
+      text-align: center;
+    }}
+    td:last-child {{
+      width: 120px;
+    }}
+    .empty {{
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📁 {os.path.basename(folder_path)}</h1>
+    <div class="breadcrumb">{folder_path}</div>
+    <table>
+      {(''.join(rows) if rows else '<tr><td colspan="3" class="empty">Folder is empty</td></tr>')}
+    </table>
+  </div>
+</body>
+</html>'''
+
+        body = html.encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/html; charset=utf-8')
+        self.send_header('Content-Length', len(body))
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         path = self.path.split('?')[0]
         if path in ('/', '/index.html'):
@@ -388,6 +497,17 @@ class Handler(BaseHTTPRequestHandler):
                 self.wfile.write(body)
             except FileNotFoundError:
                 self.send_error(404, 'HTML file not found')
+        elif path == '/api/browse':
+            import urllib.parse
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            folder = query.get('path', [''])[0].strip()
+            if not folder or not os.path.isdir(folder):
+                self.send_error(400, 'Invalid path')
+                return
+            try:
+                self.send_folder_listing(folder)
+            except Exception as e:
+                self.send_error(500, f'Error: {str(e)}')
         else:
             self.send_error(404)
 
