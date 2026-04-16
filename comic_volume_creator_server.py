@@ -528,7 +528,7 @@ class Handler(BaseHTTPRequestHandler):
 
         elif path == '/api/create':
             body = self.read_json_body()
-            folder  = body.get('folder', '').strip()
+            folder  = body.get('folder', '')  # Don't strip - preserve exact folder path including trailing spaces
             files   = body.get('files', [])
             outname = body.get('outname', '').strip().removesuffix('.cbz')
             if not folder or not files or not outname:
