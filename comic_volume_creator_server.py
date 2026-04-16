@@ -182,6 +182,8 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
       results: list of series group dicts
       skipped: list of {path, subcount} dicts (folders with sub-subfolders)
     """
+    # Strip trailing/leading whitespace from path
+    root_path = root_path.strip()
     results: list[dict] = []
     skipped: list[dict] = []
     row_id  = 0
@@ -257,6 +259,8 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
 
 def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bool, str]:
     """Build a CBZ from exactly the listed files. Returns (success, log_text)."""
+    # Strip trailing/leading whitespace from path
+    abs_path = abs_path.strip()
     log: list[str] = []
     working_dir    = os.path.join(abs_path, outname)
     cbz_name       = outname + '.cbz'
