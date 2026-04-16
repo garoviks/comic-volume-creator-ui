@@ -1793,6 +1793,7 @@ async function createSelected() {
   showConsole();
   addLog('✨ Creating ' + rows.length + ' CBZ volumes…', 'log-info');
   let succeeded = 0, failed = 0;
+  const successFolders = [];
   const failedFolders = [];
   for (const row of rows) {
     addLog('\n─── ' + row.series + ' (' + row.files.length + ' files) ───', 'log-info');
@@ -1809,7 +1810,12 @@ async function createSelected() {
                   : 'log-info';
         addLog(line, cls);
       });
-      if (json.success) { succeeded++; data = data.filter(r => r.id !== row.id); selected.delete(row.id); }
+      if (json.success) {
+        succeeded++;
+        successFolders.push({ series: row.series, folder: row.folder });
+        data = data.filter(r => r.id !== row.id);
+        selected.delete(row.id);
+      }
       else {
         failed++;
         failedFolders.push({ series: row.series, folder: row.folder });
@@ -1821,6 +1827,14 @@ async function createSelected() {
     }
   }
   addLog('\n' + (failed === 0 ? '✔' : '✖') + ' Done — ' + succeeded + ' created, ' + failed + ' failed', failed ? 'log-err' : 'log-ok');
+
+  if (successFolders.length > 0) {
+    addLog('\n✅ Successfully processed:', 'log-ok');
+    successFolders.forEach(item => {
+      addLog('   ✔ ' + item.series, 'log-ok');
+      addLog('      Folder: ' + item.folder, 'log-info');
+    });
+  }
 
   if (failedFolders.length > 0) {
     addLog('\n⚠️  Failed folders:', 'log-warn');
