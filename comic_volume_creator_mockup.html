@@ -1793,6 +1793,7 @@ async function createSelected() {
   showConsole();
   addLog('✨ Creating ' + rows.length + ' CBZ volumes…', 'log-info');
   let succeeded = 0, failed = 0;
+  const failedFolders = [];
   for (const row of rows) {
     addLog('\n─── ' + row.series + ' (' + row.files.length + ' files) ───', 'log-info');
     try {
@@ -1809,13 +1810,26 @@ async function createSelected() {
         addLog(line, cls);
       });
       if (json.success) { succeeded++; data = data.filter(r => r.id !== row.id); selected.delete(row.id); }
-      else { failed++; }
+      else {
+        failed++;
+        failedFolders.push({ series: row.series, folder: row.folder });
+      }
     } catch (e) {
       addLog('✖ Network error: ' + e.message, 'log-err');
       failed++;
+      failedFolders.push({ series: row.series, folder: row.folder });
     }
   }
   addLog('\n' + (failed === 0 ? '✔' : '✖') + ' Done — ' + succeeded + ' created, ' + failed + ' failed', failed ? 'log-err' : 'log-ok');
+
+  if (failedFolders.length > 0) {
+    addLog('\n⚠️  Failed folders:', 'log-warn');
+    failedFolders.forEach(item => {
+      addLog('   ✖ ' + item.series, 'log-err');
+      addLog('      Folder: ' + item.folder, 'log-info');
+    });
+  }
+
   renderTable();
   updateStatsFromData();
 }
