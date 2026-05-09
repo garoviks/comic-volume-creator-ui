@@ -159,11 +159,12 @@ def scan_single_folder(folder_path: str) -> dict[str, dict]:
             continue
         series = extract_series(name)
         year   = extract_year(name)
-        if series not in groups:
-            groups[series] = {'files': [], 'years': set()}
-        groups[series]['files'].append(name)
+        key = series.lower()
+        if key not in groups:
+            groups[key] = {'files': [], 'years': set(), 'display_series': series}
+        groups[key]['files'].append(name)
         if year:
-            groups[series]['years'].add(year)
+            groups[key]['years'].add(year)
 
     return groups
 
@@ -189,7 +190,8 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
     def process(folder_path: str):
         nonlocal row_id
         groups = scan_single_folder(folder_path)
-        for series, data in sorted(groups.items()):
+        for key, data in sorted(groups.items()):
+            series = data['display_series']
             files = sorted(data['files'])
             n = len(files)
             flag = 'M' if n > 6 else ('S' if n < 4 else 'Y')
