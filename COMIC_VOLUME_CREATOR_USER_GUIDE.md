@@ -44,7 +44,7 @@ choco install unrar 7zip
 
 Navigate to the Comic Volume Creator folder:
 ```bash
-cd /path/to/comic_volume_creator_server.py
+cd /path/to/comic_volume_creator
 python3 comic_volume_creator_server.py
 ```
 
