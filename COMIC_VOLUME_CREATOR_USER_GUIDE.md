@@ -748,13 +748,73 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 
 ## Version
 
-**Comic Volume Creator v1.1**
-- Last updated: April 2024
-- Server: comic_volume_creator_server.py
-- UI: comic_volume_creator_mockup.html
+**Comic Volume Creator v1.3**
+- Last updated: May 2026
+- Server: comic_volume_creator_server_v13.py (port 8003)
+- UI: comic_volume_creator_v13.html
+
+### v1.3 Changes
+- Auto-logic: automatically detects `Incomplete` and `Temp. Exclude` statuses based on 5 conditions
+- Exclusion management: right-click context menu to Always Exclude, Temp. Exclude, or Remove Exclusion
+- Persistent exclusions: both exclusion types saved to `.comic_exclusions.md` in the scanned root
+- Exclusions panel: collapsible list of all excluded folders with Remove buttons
+- New filter options: Incomplete, Temp. Exclude, Exclude in the status dropdown
+- Row highlighting: red border for Incomplete, orange for Temp. Exclude, grey for Exclude
+- Stats bar: counts for Incomplete and Temp. Exclude
+
+### v1.2 Changes
+- Case-insensitive series grouping: files with same series name but different capitalisation merged into one row
 
 ### v1.1 Changes
-- ✨ Expand All / Collapse All buttons in toolbar
-- 📊 File size (MB) display in file details
-- 💾 Save dry run output to HTML file
-- 🎨 Improved UI consistency
+- Expand All / Collapse All buttons in toolbar
+- File size (MB) display in file details
+- Save dry run output to HTML file
+- Improved UI consistency
+
+---
+
+## Exclusion Management (v1.3)
+
+### Auto-Logic Statuses
+
+After scanning, folders may be automatically assigned a status:
+
+| Status | Colour | Meaning |
+|--------|--------|---------|
+| Incomplete | Red | Gap detected in issue sequence |
+| Temp. exclude | Orange | Auto or user flagged; excluded this session |
+| Exclude | Grey | Permanently excluded |
+
+**Auto-logic conditions:**
+- **A** (Temp. exclude): Current-year files AND series explicitly incomplete `(X of N)` with X < N
+- **B** (Temp. exclude): Current-year files AND previous volume exists AND not enough issues to fill next volume
+- **C** (Incomplete): Gap in zero-padded issue numbers, including missing #001
+- **D** (Incomplete): Past-year series with atypical issue count (3 or 5, suggesting trailing issues missing)
+- **E** (Temp. exclude): Current-year files AND fewer than 4 issues
+
+### Manually Excluding Folders
+
+Right-click any row in the results table to open the context menu:
+
+- **Temp. Exclude** — marks the folder as temporarily excluded; survives page refresh (saved to file)
+- **Always Exclude** — permanently excludes the folder; applied on every future scan
+- **Remove Exclusion** — restores the folder to its auto-detected status
+
+### Exclusions Panel
+
+A collapsible panel at the bottom of the results shows all excluded folders. Each entry has a **Remove** button. Always-excluded folders are labelled "Always"; temp-excluded are labelled "Temp".
+
+### Exclusions File
+
+Exclusions are stored in `.comic_exclusions.md` inside the scanned root folder. You can edit this file directly:
+
+```markdown
+## Always Exclude
+/path/to/folder1
+/path/to/folder2
+
+## Temp Exclude
+/path/to/folder3
+```
+
+Remove a line from either section to un-exclude that folder on the next scan.

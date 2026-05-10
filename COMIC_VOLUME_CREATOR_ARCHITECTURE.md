@@ -1,5 +1,7 @@
 # Comic Volume Creator — Architecture
 
+**Current version: v1.3**
+
 ## System Overview
 
 Comic Volume Creator is a **client-server web application** for batch processing comic files:
@@ -8,8 +10,8 @@ Comic Volume Creator is a **client-server web application** for batch processing
 ┌─────────────────────┐
 │   User Browser      │
 │ (comic_volume_      │
-│  creator_mockup.    │
-│  html)              │
+│  creator_v13.html)  │
+│                     │
 │                     │
 │  • UI Components    │
 │  • State Management │
@@ -22,10 +24,11 @@ Comic Volume Creator is a **client-server web application** for batch processing
 ┌──────────▼──────────────────┐
 │ Python HTTP Server          │
 │ (comic_volume_creator_      │
-│  server.py)                 │
+│  server_v13.py, port 8003)  │
 │                             │
-│  POST /api/scan         ◄──┼──► Filesystem scan
+│  POST /api/scan         ◄──┼──► Filesystem scan + auto-logic
 │  POST /api/create       ◄──┼──► CBZ merge (unrar, unzip, zip)
+│  POST /api/exclusions   ◄──┼──► Read/write .comic_exclusions.md
 │  GET  /index.html       ◄──┼──► Serve HTML
 │                             │
 │  • JSON API                 │
@@ -159,19 +162,28 @@ Browser: doConfirmedCreate() or createSplitVolumes()
 
 ### Backend Components
 
-#### 1. **comic_volume_creator_server.py**
+#### 1. **comic_volume_creator_server_v13.py** (v1.3)
 
 **Utility Functions:**
 - `is_volume(name)` — detect if filename is already a volume
 - `extract_series(filename)` — strip issue number, get bare series name
 - `extract_year(filename)` — extract 4-digit year
+- `extract_zero_padded_issue(filename)` — strict zero-padded issue extraction (used by conditions C/D)
 - `is_numbered_issue(filename)` — detect individual issues (not volumes)
 - `get_next_volume_number(folder, series)` — scan for vNN, return max+1
 
 **Scan Logic:**
-- `scan_single_folder(folder)` — group files by series, return {series: {files, years}}
+- `scan_single_folder(folder)` — group files by `series.lower()` (case-insensitive), return {series: {files, years, display_series}}
 - `has_subdirs(path)` — check if path has subdirectories
-- `scan_root(root_path)` — orchestrate full scan, return (results, skipped)
+- `scan_root(root_path)` — orchestrate full scan, apply auto-logic, apply file exclusions, return (results, skipped, exclusions)
+
+**Auto-Logic:**
+- `apply_auto_logic(result, root)` — run conditions A–E in priority order, return updated status
+- `_check_condition_a/b/c/d/e(result, root)` — individual condition checks
+
+**Exclusions:**
+- `read_exclusions(root)` — parse `.comic_exclusions.md`, return `{'always': [...], 'temp': [...]}`
+- `write_exclusions(root, always, temp)` — write both sections to `.comic_exclusions.md`
 
 **CBZ Creation:**
 - `create_cbz_direct(abs_path, files, outname)` — 6-step merge process
@@ -227,6 +239,10 @@ let splitState = {};        // {rowId: {fileAssignments: {filename: 'v01'}, ...}
 let currentFilter = 'all';
 let currentFlagFilter = 'all';
 let currentSearch = '';
+// v1.3 additions:
+let alwaysExclusions = [];  // folder paths from ## Always Exclude in .comic_exclusions.md
+let tempExclusions   = [];  // folder paths from ## Temp Exclude in .comic_exclusions.md
+let _ctxRowId = null;       // row ID under context menu
 ```
 
 #### 2. **Core Functions**
@@ -321,7 +337,44 @@ Themes defined as JavaScript objects mapping var names → hex values. On theme 
       "path": "/path/with/subfolders",
       "subcount": 5
     }
-  ]
+  ],
+  "exclusions": {
+    "always": ["/path/to/excluded"],
+    "temp": ["/path/to/temp-excluded"]
+  }
+}
+```
+
+### POST /api/exclusions (v1.3)
+
+**Request (add):**
+```json
+{
+  "root": "/absolute/path/to/comics",
+  "action": "add",
+  "folder": "/path/to/series",
+  "type": "always"
+}
+```
+`type` is `"always"` or `"temp"`.
+
+**Request (remove):**
+```json
+{
+  "root": "/absolute/path/to/comics",
+  "action": "remove",
+  "folder": "/path/to/series",
+  "type": "always"
+}
+```
+
+**Response (200):**
+```json
+{
+  "exclusions": {
+    "always": ["/path/to/excluded"],
+    "temp": []
+  }
 }
 ```
 

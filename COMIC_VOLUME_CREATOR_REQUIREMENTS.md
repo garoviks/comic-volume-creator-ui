@@ -1,5 +1,7 @@
 # Comic Volume Creator — Requirements
 
+**Current version: v1.3**
+
 ## Overview
 
 Comic Volume Creator is a web-based tool for scanning comic collections and merging individual numbered comic files (.cbz, .cbr) into consolidated volumes. It automates the process of detecting related issues, proposing volume names, and creating merged archives.
@@ -25,6 +27,27 @@ Comic Volume Creator is a web-based tool for scanning comic collections and merg
 - **Auto-detect existing volumes** and suggest next volume number (v01 → v02, v03, etc.)
 - **Extract year information** from filenames and use highest year in volume name
 - **Extract and preserve subtitles** (e.g., "Series 001 - Story Arc Name")
+- **Case-insensitive series grouping** (v1.2): files with same series name but different capitalisation are merged into one row
+
+### FR2b: Auto-Logic Status Detection (v1.3)
+Automatically assign statuses before presenting scan results:
+
+| Status | Colour | Trigger |
+|--------|--------|---------|
+| `Ready` | default | Issues present, no conditions met |
+| `Single file` | default | Only 1 issue found |
+| `CBZ exists` | default | Volume already present |
+| `Redundant` | default | Files overlap with existing volume |
+| `Incomplete` | red | Gap detected in issue sequence |
+| `Temp. exclude` | orange | Auto-logic or user-set; saved to file |
+| `Exclude` | grey | User-set; saved to file permanently |
+
+**Auto-logic conditions** (applied only to `ready` status rows):
+- **Condition A** → `Temp. exclude`: current-year files AND `(X of N)` pattern with X < N
+- **Condition B** → `Temp. exclude`: current-year files AND previous volume exists AND available issues < expected volume size
+- **Condition C** → `Incomplete`: gap in zero-padded issue sequence (including missing #001)
+- **Condition D** → `Incomplete`: past-year series with atypical count (3 or 5 issues)
+- **Condition E** → `Temp. exclude`: current-year files AND issue count below typical volume size (< 4)
 
 ### FR3: Single Volume Creation
 - **Create CBZ volumes** by:
@@ -47,10 +70,19 @@ Comic Volume Creator is a web-based tool for scanning comic collections and merg
 - **Batch creation** of split volumes via sequential API calls
 
 ### FR5: Filtering & Search
-- **Status filter**: Ready (Y/M), CBZ exists, Single file
+- **Status filter**: Ready (Y/M), CBZ exists, Single file, Incomplete, Temp. exclude, Exclude
 - **Flag filter**: Y, S, M, or all
 - **Series search** by name (case-insensitive substring match)
 - **Multi-filter combinations** (e.g., "Ready" + "Flag M")
+
+### FR5b: Exclusion Management (v1.3)
+- **Right-click context menu** on any table row:
+  - `Temp. Exclude` — exclude for this session (persisted to file)
+  - `Always Exclude` — permanently exclude
+  - `Remove Exclusion` — restore to previous status
+- **Exclusions panel** listing all excluded folders (Always and Temp sections) with Remove buttons
+- **Persistence**: both exclusion types saved to `.comic_exclusions.md` in the scanned root folder
+- **On next scan**: always-excluded folders → `exclude` status; temp-excluded folders → `temp_exclude` status
 
 ### FR6: Bulk Operations
 - **Row-level checkboxes** for multi-select
