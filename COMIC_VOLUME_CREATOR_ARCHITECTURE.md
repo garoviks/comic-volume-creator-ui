@@ -1,6 +1,6 @@
 # Comic Volume Creator — Architecture
 
-**Current version: v1.3**
+**Current version: v1.4**
 
 ## System Overview
 

@@ -77,6 +77,14 @@ python3 comic_volume_creator_server_v13.py
 ✅ Persistent exclusions saved to `.comic_exclusions.md` in the scanned root  
 ✅ Exclusions panel listing all excluded folders with one-click removal  
 
+**v1.4 additions:**  
+✅ Auto.Ready status: auto-detects complete series ready to archive (green highlight)  
+✅ Past-year `(X of N)` incomplete series correctly flagged as Incomplete  
+✅ File sort order in CBZ fixed (issue-number sort, case-insensitive)  
+✅ Series name extraction fixed for titles containing numbers (e.g. "No. 1 With A Bullet")  
+✅ `.cbr` files that are actually ZIP archives now extracted correctly (unzip fallback)  
+✅ Exclusions matching fixed for folder names with trailing spaces  
+
 ## Workflow
 
 1. Enter source folder path
@@ -106,6 +114,6 @@ Click the **"❓ Help"** button in the app for in-app help and FAQs.
 
 **Location**: `/home/nesha/scripts/comic_volume_creator/`
 
-**Version**: v1.3
+**Version**: v1.4
 
 **Last Updated**: May 2026

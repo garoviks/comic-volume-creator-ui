@@ -452,10 +452,12 @@
   .status-single       { background: #f57f17; color: #fff9c4; }
   .status-redundant    { background: #e65100; color: #ffe0b2; }
   .status-skipped      { background: #4a148c; color: #e1bee7; }
+  .status-auto-ready   { background: #1b5e20; color: #c8e6c9; }
   .status-incomplete   { background: #b71c1c; color: #ffcdd2; }
   .status-temp-exclude { background: #4e342e; color: #ffccbc; }
   .status-exclude      { background: #212121; color: #bdbdbd; }
 
+  tr.series-row.row-auto-ready td { border-left: 3px solid #43a047; }
   tr.series-row.row-incomplete td { border-left: 3px solid #b71c1c; }
   tr.series-row.row-temp-exclude td { border-left: 3px solid #ff7043; opacity: 0.75; }
   tr.series-row.row-exclude td { border-left: 3px solid #616161; opacity: 0.55; }
@@ -1172,6 +1174,11 @@
   </div>
   <span class="stat-divider">│</span>
   <div class="stat-item">
+    <span class="stat-num" style="color:#c8e6c9" id="stat-auto-ready">—</span>
+    <span class="stat-label">Auto.Ready</span>
+  </div>
+  <span class="stat-divider">│</span>
+  <div class="stat-item">
     <span class="stat-num" style="color:#ffcdd2" id="stat-incomplete">—</span>
     <span class="stat-label">Incomplete</span>
   </div>
@@ -1225,6 +1232,7 @@
         <option value="exists">CBZ exists</option>
         <option value="redundant">Redundant</option>
         <option value="single">Single file</option>
+        <option value="auto_ready">Auto.Ready</option>
         <option value="incomplete">Incomplete</option>
         <option value="temp_exclude">Temp. Exclude</option>
         <option value="exclude">Excluded</option>
@@ -1432,6 +1440,7 @@ function statusBadge(s) {
     exists:       '<span class="status status-exists">CBZ exists</span>',
     redundant:    '<span class="status status-redundant">Redundant</span>',
     single:       '<span class="status status-skipped">Single</span>',
+    auto_ready:   '<span class="status status-auto-ready">Auto.Ready</span>',
     incomplete:   '<span class="status status-incomplete">Incomplete</span>',
     temp_exclude: '<span class="status status-temp-exclude">Temp. Exclude</span>',
     exclude:      '<span class="status status-exclude">Excluded</span>',
@@ -1450,6 +1459,7 @@ function renderTable() {
   const rows = data.filter(r => {
     if (currentFilter !== 'all') {
       if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
+      if (currentFilter === 'auto_ready' && r.status !== 'auto_ready') return false;
       if (currentFilter === 'exists' && r.status !== 'exists') return false;
       if (currentFilter === 'redundant' && r.status !== 'redundant') return false;
       if (currentFilter === 'single' && r.status !== 'single') return false;
@@ -1468,7 +1478,8 @@ function renderTable() {
     const isSel = selected.has(row.id);
     // status already set by server (temp_exclude comes from file)
     const tr = document.createElement('tr');
-    const rowClass = row.status === 'incomplete' ? 'row-incomplete'
+    const rowClass = row.status === 'auto_ready' ? 'row-auto-ready'
+                   : row.status === 'incomplete' ? 'row-incomplete'
                    : row.status === 'temp_exclude' ? 'row-temp-exclude'
                    : row.status === 'exclude' ? 'row-exclude' : '';
     tr.className = 'series-row' + (rowClass ? ' ' + rowClass : '');
@@ -1537,6 +1548,7 @@ function expandAll() {
   const rows = data.filter(r => {
     if (currentFilter !== 'all') {
       if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
+      if (currentFilter === 'auto_ready' && r.status !== 'auto_ready') return false;
       if (currentFilter === 'exists' && r.status !== 'exists') return false;
       if (currentFilter === 'redundant' && r.status !== 'redundant') return false;
       if (currentFilter === 'single' && r.status !== 'single') return false;
@@ -1567,6 +1579,7 @@ function selectAll() {
   const rows = data.filter(r => {
     if (currentFilter !== 'all') {
       if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
+      if (currentFilter === 'auto_ready' && r.status !== 'auto_ready') return false;
       if (currentFilter === 'exists' && r.status !== 'exists') return false;
       if (currentFilter === 'redundant' && r.status !== 'redundant') return false;
       if (currentFilter === 'single' && r.status !== 'single') return false;
@@ -1586,6 +1599,7 @@ function deselectAll() {
   const rows = data.filter(r => {
     if (currentFilter !== 'all') {
       if (currentFilter === 'ready' && (r.status !== 'ready')) return false;
+      if (currentFilter === 'auto_ready' && r.status !== 'auto_ready') return false;
       if (currentFilter === 'exists' && r.status !== 'exists') return false;
       if (currentFilter === 'redundant' && r.status !== 'redundant') return false;
       if (currentFilter === 'single' && r.status !== 'single') return false;
@@ -1719,8 +1733,11 @@ async function scanFolders() {
     updateStats(json.results, json.skipped);
     renderSkipped(json.skipped);
     renderExclusions();
+    const autoReady  = data.filter(r => r.status === 'auto_ready').length;
     const autoFlagged = data.filter(r => r.status === 'temp_exclude' || r.status === 'incomplete').length;
-    addLog('✔ Scan complete — ' + data.length + ' series found, ' + json.skipped.length + ' folders skipped' + (autoFlagged ? ', ' + autoFlagged + ' auto-flagged' : ''), 'log-ok');
+    addLog('✔ Scan complete — ' + data.length + ' series found, ' + json.skipped.length + ' folders skipped'
+      + (autoReady   ? ', ' + autoReady + ' Auto.Ready'  : '')
+      + (autoFlagged ? ', ' + autoFlagged + ' auto-flagged' : ''), 'log-ok');
   } catch (e) {
     addLog('✖ Network error: ' + e.message, 'log-err');
     addLog('  (Is comic_volume_creator_server_v13.py running?)', 'log-warn');
@@ -1735,6 +1752,7 @@ function updateStats(results, skipped) {
   document.getElementById('stat-small').textContent       = results.filter(r => r.flag === 'S' && r.status !== 'exists').length;
   document.getElementById('stat-exists').textContent      = results.filter(r => r.status === 'exists').length;
   document.getElementById('stat-skipped').textContent     = skipped.length;
+  document.getElementById('stat-auto-ready').textContent  = results.filter(r => r.status === 'auto_ready').length;
   document.getElementById('stat-incomplete').textContent  = results.filter(r => r.status === 'incomplete').length;
   document.getElementById('stat-temp-exclude').textContent = results.filter(r => r.status === 'temp_exclude').length;
   document.getElementById('stat-total').textContent       = results.length;
@@ -1846,6 +1864,7 @@ async function doConfirmedCreate() {
 }
 
 function updateStatsFromData() {
+  document.getElementById('stat-auto-ready').textContent = data.filter(r => r.status === 'auto_ready').length;
   document.getElementById('stat-ready').textContent  = data.filter(r => r.status === 'ready').length;
   document.getElementById('stat-small').textContent  = data.filter(r => r.flag === 'S' && r.status !== 'exists').length;
   document.getElementById('stat-exists').textContent = data.filter(r => r.status === 'exists').length;

@@ -1,6 +1,6 @@
 # Comic Volume Creator — Requirements
 
-**Current version: v1.3**
+**Current version: v1.4**
 
 ## Overview
 
@@ -74,6 +74,22 @@ Automatically assign statuses before presenting scan results:
 - **Flag filter**: Y, S, M, or all
 - **Series search** by name (case-insensitive substring match)
 - **Multi-filter combinations** (e.g., "Ready" + "Flag M")
+
+### FR2c: Auto.Ready Status (v1.4)
+
+Promote `ready` rows to `auto_ready` when confident the series is complete:
+
+| Criterion | Condition |
+|-----------|-----------|
+| 1 | Any file has `(X of N)` pattern and `len(files) == N` |
+| 2 | Past year + consecutive sequence from 001 + at least 4 files |
+| 3 | Past year + 4 or 6 files + consecutive sequence |
+| 4 | Previous volume exists + past year + consecutive sequence + at least 4 files |
+
+**Guards:**
+- If any file has `(X of N)` with `len(files) < N` → never Auto.Ready (explicitly incomplete)
+- Applies to flag Y and M rows
+- Runs after conditions A–E; never overrides Incomplete or Temp.exclude
 
 ### FR5b: Exclusion Management (v1.3)
 - **Right-click context menu** on any table row:

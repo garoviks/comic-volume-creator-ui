@@ -748,10 +748,18 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 
 ## Version
 
-**Comic Volume Creator v1.3**
+**Comic Volume Creator v1.4**
 - Last updated: May 2026
 - Server: comic_volume_creator_server_v13.py (port 8003)
 - UI: comic_volume_creator_v13.html
+
+### v1.4 Changes
+- Auto.Ready status: series confidently identified as complete are highlighted green
+- Past-year series with `(X of N)` marker and missing issues now correctly flagged as Incomplete
+- File order in resulting CBZ fixed — sorted by issue number, case-insensitive
+- Series name extraction fixed for titles containing numbers (e.g. "No. 1 With A Bullet")
+- `.cbr` files that are actually ZIP archives now extracted correctly via unzip fallback
+- Exclusion matching fixed for folder names with trailing spaces
 
 ### v1.3 Changes
 - Auto-logic: automatically detects `Incomplete` and `Temp. Exclude` statuses based on 5 conditions

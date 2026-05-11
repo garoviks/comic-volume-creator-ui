@@ -48,11 +48,11 @@ def extract_series(filename: str) -> str:
     """Strip issue number and everything after it to get bare series name."""
     name = re.sub(r'\.(cbz|cbr)$', '', filename, flags=re.IGNORECASE)
     # action_explorer approach: handles (001) parenthesised numbers and #001 hash prefix
-    m = re.match(r'^(.*?)(?:\s+(?:#?\d+|\(\d{1,3}\))(?:\s*\(of\s*\d+\))?)', name, re.IGNORECASE)
+    m = re.match(r'^(.*?)(?:\s+(?:#\d+|0\d+|\d{3,}|\(\d{1,3}\))(?:\s*\(of\s*\d+\))?)', name, re.IGNORECASE)
     if m and m.group(1).strip():
         return m.group(1).strip()
-    # fallback: scan_comics approach
-    result = re.sub(r'(\s|#)(0{1,2})?\d.*', '', name, flags=re.IGNORECASE).strip()
+    # fallback: require zero-padded number to avoid cutting titles with bare digits
+    result = re.sub(r'(\s|#)0\d.*', '', name, flags=re.IGNORECASE).strip()
     return result or name
 
 
@@ -170,7 +170,7 @@ def scan_single_folder(folder_path: str) -> dict[str, dict]:
     except OSError:
         return groups
 
-    for entry in sorted(entries, key=lambda e: e.name):
+    for entry in sorted(entries, key=lambda e: e.name.lower()):
         name = entry.name
         if os.path.splitext(name)[1].lower() not in COMIC_EXTS:
             continue
@@ -244,21 +244,33 @@ def _has_current_year(files: list[str]) -> bool:
     return any(f'({current_year})' in fname for fname in files)
 
 
+def _of_n_total(files: list[str]) -> int | None:
+    """Return the total N from the first (X of N) or X (of N) pattern found, or None."""
+    for fname in files:
+        m = re.search(r'\((\d+)\s+of\s+(\d+)\)', fname, re.IGNORECASE)
+        if m:
+            return int(m.group(2))
+        m = re.search(r'\d+\s+\(of\s+(\d+)\)', fname, re.IGNORECASE)
+        if m:
+            return int(m.group(1))
+    return None
+
+
 def _check_condition_a(files: list[str]) -> bool:
-    """Temp.exclude: current year AND series is incomplete per (X of N) or X (of N) pattern."""
+    """Temp.exclude: current year AND series is incomplete per (X of N) pattern."""
     if not _has_current_year(files):
         return False
-    # Find total issue count from any "(of N)" or "(X of N)" pattern
-    total = None
-    for fname in files:
-        m = re.search(r'\((\d+)\s+of\s+(\d+)\)', fname, re.IGNORECASE)  # (01 of 05)
-        if m:
-            total = int(m.group(2))
-            break
-        m = re.search(r'\d+\s+\(of\s+(\d+)\)', fname, re.IGNORECASE)  # 01 (of 05)
-        if m:
-            total = int(m.group(1))
-            break
+    total = _of_n_total(files)
+    if total is None:
+        return False
+    return len(files) < total
+
+
+def _check_condition_a2(files: list[str]) -> bool:
+    """Incomplete: past year AND series is incomplete per (X of N) pattern."""
+    if _has_current_year(files):
+        return False
+    total = _of_n_total(files)
     if total is None:
         return False
     return len(files) < total
@@ -337,8 +349,59 @@ def _check_condition_e(files: list[str], next_vol: int) -> bool:
     return True
 
 
+def _is_consecutive(nums: list[int]) -> bool:
+    """Return True if sorted list of ints has no gaps."""
+    return all(nums[i+1] - nums[i] == 1 for i in range(len(nums) - 1))
+
+
+def _check_auto_ready(files: list[str], next_vol: int, highest_year: str | None) -> bool:
+    """Return True if confident the series is complete and ready to archive.
+
+    Criterion 1: explicit (N of N) completion marker in any filename.
+    Criterion 2: past year + consecutive sequence starting from 001.
+    Criterion 3: past year + typical volume size (4 or 6) + consecutive sequence.
+    Criterion 4: previous volume exists + consecutive sequence + not current year.
+    """
+    current_year = datetime.datetime.now().year
+
+    # Bail out if (of N) pattern explicitly shows we don't have all issues
+    of_n = _of_n_total(files)
+    if of_n is not None and len(files) < of_n:
+        return False
+
+    # Criterion 1 — any file has (X of N) and we have all N issues
+    for fname in files:
+        m = re.search(r'\((\d+)\s+of\s+(\d+)\)', fname, re.IGNORECASE)
+        if not m:
+            m = re.search(r'(\d+)\s+\(of\s+(\d+)\)', fname, re.IGNORECASE)
+        if m:
+            total = int(m.group(2))
+            if total > 0 and len(files) == total:
+                return True
+
+    past_year = highest_year is not None and int(highest_year) < current_year
+    issue_nums = sorted(set(n for n in (extract_zero_padded_issue(f) for f in files) if n is not None))
+
+    if len(issue_nums) >= 2:
+        consecutive = _is_consecutive(issue_nums)
+
+        # Criterion 2 — past year + consecutive from 001 + at least 4 files
+        if past_year and consecutive and issue_nums[0] == 1 and len(files) >= 4:
+            return True
+
+        # Criterion 3 — past year + standard volume size + consecutive
+        if past_year and len(files) in (4, 6) and consecutive:
+            return True
+
+        # Criterion 4 — previous volume exists + consecutive + not current year + at least 4 files
+        if next_vol > 1 and past_year and consecutive and len(files) >= 4:
+            return True
+
+    return False
+
+
 def apply_auto_logic(results: list[dict]) -> None:
-    """Run conditions A–E on scan results, updating status in-place for ready rows."""
+    """Run conditions A–E then Auto.Ready on scan results, updating status in-place."""
     for row in results:
         if row['status'] != 'ready':
             continue
@@ -350,6 +413,8 @@ def apply_auto_logic(results: list[dict]) -> None:
 
         if _check_condition_a(files):
             row['status'] = 'temp_exclude'
+        elif _check_condition_a2(files):
+            row['status'] = 'incomplete'
         elif _check_condition_b(files, folder, series, next_vol):
             row['status'] = 'temp_exclude'
         elif _check_condition_c(files, next_vol):
@@ -358,6 +423,8 @@ def apply_auto_logic(results: list[dict]) -> None:
             row['status'] = 'incomplete'
         elif _check_condition_e(files, next_vol):
             row['status'] = 'temp_exclude'
+        elif _check_auto_ready(files, next_vol, highest_year):
+            row['status'] = 'auto_ready'
 
 
 def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
@@ -376,7 +443,7 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
         groups = scan_single_folder(folder_path)
         for key, data in sorted(groups.items()):
             series = data['display_series']
-            files = sorted(data['files'])
+            files = sorted(data['files'], key=lambda f: (extract_issue_number(f) or extract_zero_padded_issue(f) or 0, f.lower()))
             n = len(files)
             flag = 'M' if n > 6 else ('S' if n < 4 else 'Y')
             highest_year = str(max(int(y) for y in data['years'])) if data['years'] else None
@@ -440,12 +507,15 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
     # Apply auto-logic (conditions A–D)
     apply_auto_logic(results)
 
-    # Apply exclusions from file
+    # Apply exclusions from file (strip folder paths for comparison to handle trailing spaces)
     exclusions = read_exclusions(root_path)
+    always_set = set(p.strip() for p in exclusions['always'])
+    temp_set   = set(p.strip() for p in exclusions['temp'])
     for row in results:
-        if row['folder'] in exclusions['always']:
+        folder_key = row['folder'].strip()
+        if folder_key in always_set:
             row['status'] = 'exclude'
-        elif row['folder'] in exclusions['temp']:
+        elif folder_key in temp_set:
             row['status'] = 'temp_exclude'
 
     return results, skipped, exclusions
@@ -475,7 +545,7 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
         ok(f'Created: {working_dir}')
 
         log.append(f'\n[2/6] Extracting {len(files)} file(s)')
-        for filename in sorted(files):
+        for filename in sorted(files, key=lambda f: (extract_issue_number(f) or extract_zero_padded_issue(f) or 0, f.lower())):
             src  = os.path.join(abs_path, filename)
             stem = os.path.splitext(filename)[0]
             ext  = os.path.splitext(filename)[1].lower()
@@ -491,6 +561,12 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
                 info('Tool: unzip')
             info('Command: ' + ' '.join(cmd))
             result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0 and ext in ('.cbr', '.rar'):
+                # Some .cbr files are actually ZIP archives — fall back to unzip
+                info('unrar failed, retrying with unzip (file may be ZIP-format .cbr)')
+                cmd = ['unzip', '-o', '-q', src, '-d', subdir]
+                info('Tool: unzip (fallback)')
+                result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 err(f'Extraction failed (exit code {result.returncode})')
                 if result.stderr.strip():
