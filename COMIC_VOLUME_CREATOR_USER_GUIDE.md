@@ -749,7 +749,7 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 ## Version
 
 **Comic Volume Creator v1.4**
-- Last updated: May 2026
+- Last updated: 2026-05-11 19:20
 - Server: comic_volume_creator_server_v13.py (port 8003)
 - UI: comic_volume_creator_v13.html
 
@@ -761,7 +761,7 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 - `.cbr` files that are actually ZIP archives now extracted correctly via unzip fallback
 - Exclusion matching fixed for folder names with trailing spaces
 
-### v1.3 Changes
+### v1.3 Changes (2026-05-10 12:14)
 - Auto-logic: automatically detects `Incomplete` and `Temp. Exclude` statuses based on 5 conditions
 - Exclusion management: right-click context menu to Always Exclude, Temp. Exclude, or Remove Exclusion
 - Persistent exclusions: both exclusion types saved to `.comic_exclusions.md` in the scanned root

@@ -116,4 +116,4 @@ Click the **"❓ Help"** button in the app for in-app help and FAQs.
 
 **Version**: v1.4
 
-**Last Updated**: May 2026
+**Last Updated**: 2026-05-11 19:20
