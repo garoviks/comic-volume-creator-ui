@@ -125,12 +125,15 @@ POST /api/create {
 Server: create_cbz_direct()
 
 [1] Create working folder: working_dir = {outname}/
-[2] Extract each file
-    for each file:
+[2] Extract each file (sorted by issue number)
+    files sorted by: extract_issue_number(f) or extract_zero_padded_issue(f) or 0
+    for each file (idx starting at 1):
       • Determine ext (.cbr vs .cbz)
-      • Create subfolder: working_dir/{filename_stem}/
-      • Run: unrar e -o+ file.cbr working_dir/{stem}/
-             OR unzip -o -q file.cbz -d working_dir/{stem}/
+      • Create subfolder: working_dir/{idx:02}_{filename_stem}/
+        (index prefix ensures zip alphabetical order = reading order)
+      • Run: unrar e -o+ file.cbr working_dir/{prefix_stem}/
+             OR unzip -o -q file.cbz -d working_dir/{prefix_stem}/
+             (unzip fallback if unrar fails on ZIP-format .cbr)
 [3] Zip working folder
     cwd = working_dir
     zip -r {outname}.cbz .
@@ -265,7 +268,7 @@ let _ctxRowId = null;       // row ID under context menu
 **Split Volumes:**
 - `toggleSplitPanel(id)` — open/close split edit for row
 - `updateSplitPreview(id)` — refresh volume assignments, auto-suggest next vol
-- `assignVolumeToSelected(id)` — batch assign files to volume
+- `assign2Vol(id)` — assign checked files to volume name; auto-deselects after assignment
 - `suggestSplit(id)` — auto-balance files into volumes
 - `createSplitVolumes(id)` — POST /api/create for each volume sequentially
 

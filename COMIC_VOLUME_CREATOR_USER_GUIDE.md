@@ -324,13 +324,13 @@ Use **Split** for series with **Flag M** (>6 files):
 
 3. **Assign to volume**
    - Text field auto-fills with "v01" (or next volume if v01 exists)
-   - Click **"Assign"** button
-   - Files now show "v01" badge
+   - Click **"✔ Assign2Vol"** button
+   - Files now show "v01" badge; checkboxes auto-deselect
 
 4. **Select next batch for v02**
-   - Check files 7–12
+   - Check files 7–12 (previous selection already cleared)
    - Text field auto-fills with "v02"
-   - Click **"Assign"**
+   - Click **"✔ Assign2Vol"**
 
 5. **Repeat for remaining files**
    - Continue checking and assigning
@@ -749,7 +749,7 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 ## Version
 
 **Comic Volume Creator v1.4**
-- Last updated: 2026-05-11 19:20
+- Last updated: 2026-05-11 22:45
 - Server: comic_volume_creator_server_v13.py (port 8003)
 - UI: comic_volume_creator_v13.html
 
@@ -757,9 +757,11 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 - Auto.Ready status: series confidently identified as complete are highlighted green
 - Past-year series with `(X of N)` marker and missing issues now correctly flagged as Incomplete
 - File order in resulting CBZ fixed — sorted by issue number, case-insensitive
+- CBZ internal order fixed: subfolders prefixed with sort index so zip ordering = reading order
 - Series name extraction fixed for titles containing numbers (e.g. "No. 1 With A Bullet")
 - `.cbr` files that are actually ZIP archives now extracted correctly via unzip fallback
 - Exclusion matching fixed for folder names with trailing spaces
+- Split panel: Assign replaced with Assign2Vol; auto-deselects files after each assignment
 
 ### v1.3 Changes (2026-05-10 12:14)
 - Auto-logic: automatically detects `Incomplete` and `Temp. Exclude` statuses based on 5 conditions

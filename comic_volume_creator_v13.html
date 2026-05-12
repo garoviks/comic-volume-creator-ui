@@ -2362,19 +2362,20 @@ function renderSplitPanel(row) {
       <div class="split-files-section">
         <div class="split-section-title">📋 Select files for volume assignment</div>
         <div class="file-list">
-          ${row.files.map(f => `
+          ${row.files.map(f => {
+            const fe = f.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            return `
             <div class="file-item">
               <input type="checkbox"
                 data-rid="${row.id}"
-                data-file="${f}"
-                ${st.fileAssignments[f] ? 'checked' : ''}
+                data-file="${fe}"
                 onchange="updateSplitPreview(${row.id})">
-              <span class="file-name" title="${f}">${f}</span>
+              <span class="file-name" title="${fe}">${fe}</span>
               <span class="file-volume-badge ${st.fileAssignments[f] ? '' : 'unassigned'}">
                 ${st.fileAssignments[f] || '—'}
               </span>
             </div>
-          `).join('')}
+          `;}).join('')}
         </div>
       </div>
 
@@ -2391,8 +2392,11 @@ function renderSplitPanel(row) {
             id="vol-input-${row.id}"
             placeholder="v01"
             value="">
-          <button onclick="assignVolumeToSelected(${row.id})">Assign</button>
         </div>
+
+        <button class="suggest-button" onclick="assign2Vol(${row.id})">
+          ✔ Assign2Vol
+        </button>
 
         <button class="suggest-button" onclick="suggestSplit(${row.id})">
           💡 Suggest Split
@@ -2449,8 +2453,6 @@ function updateSplitPreview(id) {
     }
   }
 
-  // Store current selection temporarily for assign
-  st._tempSelected = selected;
 }
 
 function assignVolumeToSelected(id) {
@@ -2458,16 +2460,37 @@ function assignVolumeToSelected(id) {
   if (!row) return;
 
   const st = splitState[id];
-  const volName = document.getElementById(`vol-input-${id}`).value.trim().toLowerCase();
+  if (!st) return;
+
+  const volInput = document.getElementById(`vol-input-${id}`);
+  const volName = volInput ? volInput.value.trim().toLowerCase() : '';
   if (!volName) { alert('Enter a volume name (e.g., v01)'); return; }
 
-  const selected = st._tempSelected || [];
+  const checkboxes = Array.from(document.querySelectorAll(`input[data-rid="${id}"]`));
+  const selected = checkboxes.filter(c => c.checked).map(c => c.dataset.file);
   if (selected.length === 0) { alert('Select files first'); return; }
 
   selected.forEach(f => {
     st.fileAssignments[f] = volName;
   });
-  delete st._tempSelected;
+
+  renderTable();
+  setTimeout(() => updateSplitPreview(id), 50);
+}
+
+function assign2Vol(id) {
+  const st = splitState[id];
+  if (!st) return;
+
+  const volInput = document.getElementById(`vol-input-${id}`);
+  const volName = volInput ? volInput.value.trim().toLowerCase() : '';
+  if (!volName) { alert('Enter a volume name (e.g., v01)'); return; }
+
+  const checkboxes = Array.from(document.querySelectorAll(`input[data-rid="${id}"]`));
+  const selected = checkboxes.filter(c => c.checked).map(c => c.dataset.file);
+  if (selected.length === 0) { alert('Select files first'); return; }
+
+  selected.forEach(f => { st.fileAssignments[f] = volName; });
 
   renderTable();
   setTimeout(() => updateSplitPreview(id), 50);

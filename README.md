@@ -84,6 +84,8 @@ python3 comic_volume_creator_server_v13.py
 ✅ Series name extraction fixed for titles containing numbers (e.g. "No. 1 With A Bullet")  
 ✅ `.cbr` files that are actually ZIP archives now extracted correctly (unzip fallback)  
 ✅ Exclusions matching fixed for folder names with trailing spaces  
+✅ CBZ internal order fixed: subfolders prefixed with index so zip alphabetical = reading order  
+✅ Split panel: Assign2Vol button replaces Assign; auto-deselects after each assignment  
 
 ## Workflow
 
@@ -116,4 +118,4 @@ Click the **"❓ Help"** button in the app for in-app help and FAQs.
 
 **Version**: v1.4
 
-**Last Updated**: 2026-05-11 19:20
+**Last Updated**: 2026-05-11 22:45

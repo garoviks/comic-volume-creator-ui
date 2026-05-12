@@ -545,11 +545,13 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
         ok(f'Created: {working_dir}')
 
         log.append(f'\n[2/6] Extracting {len(files)} file(s)')
-        for filename in sorted(files, key=lambda f: (extract_issue_number(f) or extract_zero_padded_issue(f) or 0, f.lower())):
+        sorted_files = sorted(files, key=lambda f: (extract_issue_number(f) or extract_zero_padded_issue(f) or 0, f.lower()))
+        pad = len(str(len(sorted_files)))
+        for idx, filename in enumerate(sorted_files, 1):
             src  = os.path.join(abs_path, filename)
             stem = os.path.splitext(filename)[0]
             ext  = os.path.splitext(filename)[1].lower()
-            subdir = os.path.join(working_dir, stem)
+            subdir = os.path.join(working_dir, f'{str(idx).zfill(pad)}_{stem}')
             os.makedirs(subdir)
             log.append(f'\n  → {filename}')
             info(f'Subfolder: {stem}/')
