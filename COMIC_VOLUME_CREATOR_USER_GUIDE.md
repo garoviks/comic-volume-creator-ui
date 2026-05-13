@@ -749,7 +749,7 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 ## Version
 
 **Comic Volume Creator v1.5**
-- Last updated: 2026-05-13 10:30
+- Last updated: 2026-05-13 14:00
 - Server: comic_volume_creator_server_v15.py (port 8015)
 - UI: comic_volume_creator_v15.html
 
@@ -758,6 +758,7 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 - Issue numbers 10+ without zero-padding now correctly detected as numbered issues and grouped with the series
 - Browser tab title cleaned up (removed "Mockup")
 - Split panel Suggest Split and Assign2Vol now start from the correct next volume number (e.g. v02 when v01 already exists), using outname set during scan
+- Split panel vol input placeholder shows the correct starting volume immediately on open (no longer shows v01 before first file selection)
 
 ### v1.4 Changes
 - Auto.Ready status: series confidently identified as complete are highlighted green

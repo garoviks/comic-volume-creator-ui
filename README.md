@@ -125,4 +125,4 @@ Click the **"❓ Help"** button in the app for in-app help and FAQs.
 
 **Version**: v1.5
 
-**Last Updated**: 2026-05-13 10:30
+**Last Updated**: 2026-05-13 14:00
