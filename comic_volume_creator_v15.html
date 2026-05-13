@@ -2365,6 +2365,8 @@ function toggleSplitPanel(id) {
 
 function renderSplitPanel(row) {
   const st = splitState[row.id] || { fileAssignments: {}, volumes: {} };
+  const _vm = row.outname ? row.outname.match(/\bv(\d+)\b/i) : null;
+  const startVolPlaceholder = _vm ? 'v' + String(parseInt(_vm[1])).padStart(2, '0') : 'v01';
 
   // Get list of selected files
   const selectedFiles = row.files.filter(f => st.fileAssignments[f]);
@@ -2440,7 +2442,7 @@ function renderSplitPanel(row) {
         <div class="volume-input-group">
           <input type="text"
             id="vol-input-${row.id}"
-            placeholder="v01"
+            placeholder="${startVolPlaceholder}"
             value="">
         </div>
 
