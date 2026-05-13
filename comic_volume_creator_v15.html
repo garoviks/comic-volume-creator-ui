@@ -2499,7 +2499,8 @@ function updateSplitPreview(id) {
       const nextVol = 'v' + String(maxNum + 1).padStart(2, '0');
       document.getElementById(`vol-input-${id}`).value = nextVol;
     } else {
-      document.getElementById(`vol-input-${id}`).value = 'v01';
+      const m = row.outname ? row.outname.match(/\bv(\d+)\b/i) : null;
+      document.getElementById(`vol-input-${id}`).value = m ? 'v' + String(parseInt(m[1])).padStart(2, '0') : 'v01';
     }
   }
 
@@ -2557,7 +2558,8 @@ function suggestSplit(id) {
 
   const st = splitState[id];
   st.fileAssignments = {};
-  let volNum = 1;
+  const outnameMatch = row.outname ? row.outname.match(/\bv(\d+)\b/i) : null;
+  let volNum = outnameMatch ? parseInt(outnameMatch[1]) : 1;
   row.files.forEach((f, i) => {
     if (i > 0 && i % filesPerVol === 0) volNum++;
     st.fileAssignments[f] = 'v' + String(volNum).padStart(2, '0');

@@ -470,6 +470,21 @@ Themes defined as JavaScript objects mapping var names → hex values. On theme 
 
 ---
 
+## Cross-Component Dependencies
+
+These are non-obvious couplings where a bug in one place silently breaks another. Check this list when touching either side.
+
+| Consumer (frontend) | Depends on | Producer (backend) | What breaks if wrong |
+|---|---|---|---|
+| `suggestSplit(id)` | `row.outname` contains correct next vNN | `get_next_volume_number()` in scan | Split suggests v01/v02 instead of v02/v03 when v01 already exists on disk |
+| `updateSplitPreview(id)` | `row.outname` contains correct next vNN | `get_next_volume_number()` in scan | Manual Assign2Vol input defaults to v01 instead of correct next volume |
+| `createSelected()` split path | `st.fileAssignments` keys match `row.files` entries exactly | `renderSplitPanel()` — `data-file` attribute value after HTML-escaping must decode back to the original filename | Files silently skipped from volume assignment |
+| `assign2Vol(id)` | `c.dataset.file` (from `data-file` attr) matches original filename | `renderSplitPanel()` HTML-escaping: `&amp;` `&quot;` decoded by browser back to original | Wrong or missing file in assignment |
+| Auto-logic conditions A/B/E | `row.files` contains ALL issues including non-zero-padded (e.g. issue 10) | `is_numbered_issue()` must accept bare 2-digit numbers | Issue 10+ silently dropped from scan, conditions miscalculate counts |
+| CBZ reading order | Subfolders named `NN_stem` sort alphabetically = issue order | `create_cbz_direct()` index prefix must be zero-padded to same width | Files appear in wrong order inside CBZ |
+
+---
+
 ## Known Limitations
 
 1. **Folder depth**: Only scans 2 levels (cwd + subfolders)

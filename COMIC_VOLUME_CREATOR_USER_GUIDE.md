@@ -757,6 +757,7 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 - Bulk split support: "Create Selected CBZs" detects split assignments and creates multiple CBZs per row instead of one merged file
 - Issue numbers 10+ without zero-padding now correctly detected as numbered issues and grouped with the series
 - Browser tab title cleaned up (removed "Mockup")
+- Split panel Suggest Split and Assign2Vol now start from the correct next volume number (e.g. v02 when v01 already exists), using outname set during scan
 
 ### v1.4 Changes
 - Auto.Ready status: series confidently identified as complete are highlighted green
