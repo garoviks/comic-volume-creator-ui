@@ -1,6 +1,6 @@
 # Comic Volume Creator — Architecture
 
-**Current version: v1.4**
+**Current version: v1.5**
 
 ## System Overview
 
@@ -10,7 +10,7 @@ Comic Volume Creator is a **client-server web application** for batch processing
 ┌─────────────────────┐
 │   User Browser      │
 │ (comic_volume_      │
-│  creator_v13.html)  │
+│  creator_v15.html)  │
 │                     │
 │                     │
 │  • UI Components    │
@@ -24,7 +24,7 @@ Comic Volume Creator is a **client-server web application** for batch processing
 ┌──────────▼──────────────────┐
 │ Python HTTP Server          │
 │ (comic_volume_creator_      │
-│  server_v13.py, port 8003)  │
+│  server_v15.py, port 8015)  │
 │                             │
 │  POST /api/scan         ◄──┼──► Filesystem scan + auto-logic
 │  POST /api/create       ◄──┼──► CBZ merge (unrar, unzip, zip)
@@ -165,7 +165,7 @@ Browser: doConfirmedCreate() or createSplitVolumes()
 
 ### Backend Components
 
-#### 1. **comic_volume_creator_server_v13.py** (v1.3)
+#### 1. **comic_volume_creator_server_v15.py** (v1.5)
 
 **Utility Functions:**
 - `is_volume(name)` — detect if filename is already a volume
@@ -275,7 +275,7 @@ let _ctxRowId = null;       // row ID under context menu
 **Create Operations:**
 - `createOne(id)` — open confirm dialog for single volume
 - `doConfirmedCreate()` — POST /api/create, stream log to console
-- `createSelected()` — POST /api/create for each selected row
+- `createSelected()` — for each selected row: if split assignments exist, creates one CBZ per volume; otherwise single merge
 - `dryRunOne(id)`, `dryRun()` — preview without executing
 
 **UI Interaction:**

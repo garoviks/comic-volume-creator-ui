@@ -1,12 +1,12 @@
 """
-Comic Volume Creator Server v1.3
-Serves comic_volume_creator_v13.html and provides JSON API endpoints.
+Comic Volume Creator Server v1.5
+Serves comic_volume_creator_v15.html and provides JSON API endpoints.
 
 Usage:
-    python3 comic_volume_creator_server_v13.py [--port 8003]
+    python3 comic_volume_creator_server_v15.py [--port 8015]
 
 Endpoints:
-    GET  /                   — serves comic_volume_creator_v13.html
+    GET  /                   — serves comic_volume_creator_v15.html
     GET  /api/browse         — query: ?path=/folder/path
                                returns: HTML listing of folder contents
     GET  /api/exclusions     — query: ?path=/root/path
@@ -29,7 +29,7 @@ import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-HTML_FILE  = os.path.join(SCRIPT_DIR, 'comic_volume_creator_v13.html')
+HTML_FILE  = os.path.join(SCRIPT_DIR, 'comic_volume_creator_v15.html')
 
 COMIC_EXTS = {'.cbz', '.cbr'}
 
@@ -855,7 +855,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     parser = argparse.ArgumentParser(description='Comic Volume Creator server')
-    parser.add_argument('--port', type=int, default=8003)
+    parser.add_argument('--port', type=int, default=8015)
     args = parser.parse_args()
 
     print(f'Comic Volume Creator — http://localhost:{args.port}/')

@@ -748,10 +748,15 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 
 ## Version
 
-**Comic Volume Creator v1.4**
-- Last updated: 2026-05-11 22:45
-- Server: comic_volume_creator_server_v13.py (port 8003)
-- UI: comic_volume_creator_v13.html
+**Comic Volume Creator v1.5**
+- Last updated: 2026-05-13 10:30
+- Server: comic_volume_creator_server_v15.py (port 8015)
+- UI: comic_volume_creator_v15.html
+
+### v1.5 Changes (2026-05-13 10:30)
+- Bulk split support: "Create Selected CBZs" detects split assignments and creates multiple CBZs per row instead of one merged file
+- Issue numbers 10+ without zero-padding now correctly detected as numbered issues and grouped with the series
+- Browser tab title cleaned up (removed "Mockup")
 
 ### v1.4 Changes
 - Auto.Ready status: series confidently identified as complete are highlighted green
