@@ -14,11 +14,12 @@ Endpoints:
     POST /api/scan                — body: {"path": "/some/comics/root"}
                                      returns: {"results": [...], "skipped": [...], "exclusions": [...]}
     POST /api/create              — body: {"folder": "...", "files": [...], "outname": "...",
-                                           "cv_api_key": "...", "cv_auto_enrich": true}
+                                           "mc_username": "...", "mc_password": "...",
+                                           "mc_auto_enrich": true}
                                      returns: {"success": true/false, "log": "...", "cbz_name": "..."}
     POST /api/exclusions          — body: {"root": "...", "action": "add"|"remove", "folder": "..."}
                                      returns: {"exclusions": [...]}
-    POST /api/comicvine-search    — body: {"series_name": "...", "api_key": "..."}
+    POST /api/metron-search       — body: {"series_name": "...", "username": "...", "password": "..."}
                                      returns: {"results": [...]}
 """
 
@@ -637,7 +638,7 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
         return False, '\n'.join(log)
 
 
-# ── ComicVine enrichment ────────────────────────────────────────────────────
+# ── Metron metadata enrichment ───────────────────────────────────────────────
 
 def inject_comicinfo_into_cbz(cbz_path: str, xml_str: str) -> None:
     """Add or replace ComicInfo.xml at the root of a CBZ archive."""
@@ -657,12 +658,12 @@ def inject_comicinfo_into_cbz(cbz_path: str, xml_str: str) -> None:
 
 
 def enrich_cbz(cbz_path: str, series_name: str, outname: str,
-               files: list, api_key: str) -> str:
-    """Query ComicVine, build ComicInfo.xml, inject into CBZ. Returns log line(s)."""
+               files: list, username: str, password: str) -> str:
+    """Query Metron, build ComicInfo.xml, inject into CBZ. Returns log line(s)."""
     try:
-        import comicvine_client as cv
+        import metron_client as mc
     except ImportError:
-        return '  ⚠ comicvine_client.py not found — metadata skipped'
+        return '  ⚠ metron_client.py not found — metadata skipped'
 
     vol_match = re.search(r'\bv(\d+)\b', outname, re.IGNORECASE)
     volume_num = int(vol_match.group(1)) if vol_match else 1
@@ -673,25 +674,25 @@ def enrich_cbz(cbz_path: str, series_name: str, outname: str,
     issue_count = len(files)
 
     try:
-        results = cv.search_volume(series_name, api_key)
-        cv_data = cv.pick_best_match(series_name, results)
+        results = mc.search_series(series_name, username, password)
+        mc_data = mc.pick_best_match(series_name, results)
     except Exception as e:
-        xml = cv.build_comicinfo_xml(series_name, volume_num, first_issue, issue_count, None)
+        xml = mc.build_comicinfo_xml(series_name, volume_num, first_issue, issue_count, None)
         inject_comicinfo_into_cbz(cbz_path, xml)
-        return f'  ⚠ ComicVine error ({e}) — filename-only ComicInfo.xml injected'
+        return f'  ⚠ Metron error ({e}) — filename-only ComicInfo.xml injected'
 
-    xml = cv.build_comicinfo_xml(series_name, volume_num, first_issue, issue_count, cv_data)
+    xml = mc.build_comicinfo_xml(series_name, volume_num, first_issue, issue_count, mc_data)
     inject_comicinfo_into_cbz(cbz_path, xml)
 
-    if cv_data:
-        pub = cv_data.get('publisher', '')
-        year = cv_data.get('start_year', '')
-        label = cv_data['name']
+    if mc_data:
+        pub = mc_data.get('publisher', '')
+        year = str(mc_data.get('year_began', ''))
+        label = mc_data['name']
         if pub or year:
             label += ' (' + ', '.join(x for x in [pub, year] if x) + ')'
         return f'  · ComicInfo.xml: {label} — injected'
     else:
-        return f'  · ComicInfo.xml: {series_name} (filename-only, no CV match) — injected'
+        return f'  · ComicInfo.xml: {series_name} (filename-only, no Metron match) — injected'
 
 
 # ── HTTP server ─────────────────────────────────────────────────────────────
@@ -900,8 +901,9 @@ class Handler(BaseHTTPRequestHandler):
             folder  = body.get('folder', '')  # Don't strip - preserve exact folder path including trailing spaces
             files   = body.get('files', [])
             outname = body.get('outname', '').strip().removesuffix('.cbz')
-            api_key = body.get('cv_api_key', '').strip()
-            auto_enrich = body.get('cv_auto_enrich', False)
+            username = body.get('mc_username', '').strip()
+            password = body.get('mc_password', '').strip()
+            auto_enrich = body.get('mc_auto_enrich', False)
             if not folder or not files or not outname:
                 self.send_json(400, {'error': 'Missing folder, files, or outname'})
                 return
@@ -909,24 +911,25 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(400, {'error': f'Folder not found: {folder!r}'})
                 return
             success, log = create_cbz_direct(folder, files, outname)
-            if success and auto_enrich and api_key:
+            if success and auto_enrich and username and password:
                 cbz_path = os.path.join(folder, outname + '.cbz')
                 series_name = re.sub(r'\s+v\d+.*$', '', outname, flags=re.IGNORECASE).strip()
-                enrich_log = enrich_cbz(cbz_path, series_name, outname, files, api_key)
+                enrich_log = enrich_cbz(cbz_path, series_name, outname, files, username, password)
                 log += '\n' + enrich_log
             self.send_json(200 if success else 500,
                            {'success': success, 'log': log, 'cbz_name': outname + '.cbz'})
 
-        elif path == '/api/comicvine-search':
+        elif path == '/api/metron-search':
             body = self.read_json_body()
             series_name = body.get('series_name', '').strip()
-            api_key = body.get('api_key', '').strip()
-            if not series_name or not api_key:
-                self.send_json(400, {'error': 'Missing series_name or api_key'})
+            username = body.get('username', '').strip()
+            password = body.get('password', '').strip()
+            if not series_name or not username or not password:
+                self.send_json(400, {'error': 'Missing series_name, username, or password'})
                 return
             try:
-                import comicvine_client as cv
-                results = cv.search_volume(series_name, api_key)
+                import metron_client as mc
+                results = mc.search_series(series_name, username, password)
                 self.send_json(200, {'results': results})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})

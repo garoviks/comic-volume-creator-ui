@@ -1002,26 +1002,30 @@
   </div>
 
   <div class="settings-section">
-    <div class="settings-section-title">ComicVine Metadata</div>
+    <div class="settings-section-title">Metron Metadata</div>
     <div style="font-size:0.78rem; color:var(--text-dim); margin-bottom:8px; line-height:1.5;">
-      Automatically embed ComicInfo.xml with series metadata from ComicVine when creating CBZs.
-      Get a free API key at <span style="color:var(--accent2)">comicvine.gamespot.com/api</span>
+      Automatically embed ComicInfo.xml with series metadata from Metron when creating CBZs.
+      Free account at <span style="color:var(--accent2)">metron.cloud</span>
     </div>
     <div style="display:flex; flex-direction:column; gap:8px;">
-      <input id="cv-api-key-input" type="password" placeholder="API key"
+      <input id="mc-username-input" type="text" placeholder="Metron username"
         style="background:var(--input-bg); color:var(--text); border:1px solid var(--input-b);
-               border-radius:4px; padding:6px 8px; font-size:0.82rem; font-family:monospace; width:100%;"
+               border-radius:4px; padding:6px 8px; font-size:0.82rem; width:100%;"
+        autocomplete="off">
+      <input id="mc-password-input" type="password" placeholder="Metron password"
+        style="background:var(--input-bg); color:var(--text); border:1px solid var(--input-b);
+               border-radius:4px; padding:6px 8px; font-size:0.82rem; width:100%;"
         autocomplete="off">
       <div style="display:flex; gap:6px; align-items:center;">
-        <button class="btn btn-grey btn-sm" onclick="saveCvApiKey()" style="flex:1;">Save Key</button>
-        <button class="btn btn-grey btn-sm" onclick="clearCvApiKey()">Clear</button>
+        <button class="btn btn-grey btn-sm" onclick="saveMcCredentials()" style="flex:1;">Save</button>
+        <button class="btn btn-grey btn-sm" onclick="clearMcCredentials()">Clear</button>
       </div>
       <label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; cursor:pointer; padding-top:4px;">
-        <input type="checkbox" id="cv-auto-enrich" onchange="saveCvPrefs()"
+        <input type="checkbox" id="mc-auto-enrich" onchange="saveMcPrefs()"
           style="accent-color:var(--accent); width:14px; height:14px;">
         Auto-enrich CBZs with metadata
       </label>
-      <div id="cv-key-status" style="font-size:0.72rem; color:var(--text-dim); min-height:1em;"></div>
+      <div id="mc-cred-status" style="font-size:0.72rem; color:var(--text-dim); min-height:1em;"></div>
     </div>
   </div>
 
@@ -1853,15 +1857,17 @@ async function doConfirmedCreate() {
   addLog('   Folder: ' + row.folder, 'log-info');
   addLog('   Files:  ' + row.files.length + ' source file(s)\n', 'log-info');
 
-  const cvKey = localStorage.getItem('cv_api_key') || '';
-  const cvEnrich = localStorage.getItem('cv_auto_enrich') === 'true';
+  const mcUser = localStorage.getItem('mc_username') || '';
+  const mcPass = localStorage.getItem('mc_password') || '';
+  const mcEnrich = localStorage.getItem('mc_auto_enrich') === 'true';
 
   try {
     const resp = await fetch('/api/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ folder: row.folder, files: row.files, outname,
-                             cv_api_key: cvKey, cv_auto_enrich: cvEnrich && !!cvKey })
+                             mc_username: mcUser, mc_password: mcPass,
+                             mc_auto_enrich: mcEnrich && !!mcUser && !!mcPass })
     });
     const json = await resp.json();
     // Stream log lines with a small delay for readability
@@ -1924,8 +1930,9 @@ async function createSelected() {
   clearLog();
   showConsole();
   addLog('✨ Creating ' + rows.length + ' CBZ volumes…', 'log-info');
-  const cvKey = localStorage.getItem('cv_api_key') || '';
-  const cvEnrich = localStorage.getItem('cv_auto_enrich') === 'true';
+  const mcUser = localStorage.getItem('mc_username') || '';
+  const mcPass = localStorage.getItem('mc_password') || '';
+  const mcEnrich = localStorage.getItem('mc_auto_enrich') === 'true';
   let succeeded = 0, failed = 0;
   const successFolders = [];
   const failedFolders = [];
@@ -1954,7 +1961,7 @@ async function createSelected() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ folder: row.folder, files, outname: row.series + ' ' + volName,
-                                   cv_api_key: cvKey, cv_auto_enrich: cvEnrich && !!cvKey })
+                                   mc_username: mcUser, mc_password: mcPass, mc_auto_enrich: mcEnrich && !!mcUser && !!mcPass })
           });
           const json = await resp.json();
           (json.log || '').split('\n').forEach(line => {
@@ -1987,7 +1994,7 @@ async function createSelected() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ folder: row.folder, files: row.files, outname: row.outname,
-                                 cv_api_key: cvKey, cv_auto_enrich: cvEnrich && !!cvKey })
+                                 mc_username: mcUser, mc_password: mcPass, mc_auto_enrich: mcEnrich && !!mcUser && !!mcPass })
         });
         const json = await resp.json();
         (json.log || '').split('\n').forEach(line => {
@@ -2296,41 +2303,50 @@ function openSettings() {
   document.getElementById('settings-panel').classList.add('open');
   document.getElementById('settings-overlay').classList.add('open');
   renderSwatches();
-  loadCvSettingsUI();
+  loadMcSettingsUI();
 }
 
-function loadCvSettingsUI() {
-  const key = localStorage.getItem('cv_api_key') || '';
-  const enrich = localStorage.getItem('cv_auto_enrich') === 'true';
-  const inp = document.getElementById('cv-api-key-input');
-  const chk = document.getElementById('cv-auto-enrich');
-  const status = document.getElementById('cv-key-status');
-  if (inp) inp.value = '';  // don't pre-fill password field; show status instead
+function loadMcSettingsUI() {
+  const user = localStorage.getItem('mc_username') || '';
+  const enrich = localStorage.getItem('mc_auto_enrich') === 'true';
+  const uInp = document.getElementById('mc-username-input');
+  const pInp = document.getElementById('mc-password-input');
+  const chk = document.getElementById('mc-auto-enrich');
+  const status = document.getElementById('mc-cred-status');
+  if (uInp) uInp.value = '';
+  if (pInp) pInp.value = '';
   if (chk) chk.checked = enrich;
-  if (status) status.textContent = key ? ('Key saved: ' + key.slice(0,4) + '…' + key.slice(-4)) : 'No key saved';
+  if (status) status.textContent = user ? ('Saved: ' + user) : 'No credentials saved';
 }
 
-function saveCvApiKey() {
-  const inp = document.getElementById('cv-api-key-input');
-  const key = inp ? inp.value.trim() : '';
-  if (!key) { alert('Enter an API key first.'); return; }
-  localStorage.setItem('cv_api_key', key);
-  if (inp) inp.value = '';
-  const status = document.getElementById('cv-key-status');
-  if (status) status.textContent = 'Key saved: ' + key.slice(0,4) + '…' + key.slice(-4);
+function saveMcCredentials() {
+  const uInp = document.getElementById('mc-username-input');
+  const pInp = document.getElementById('mc-password-input');
+  const user = uInp ? uInp.value.trim() : '';
+  const pass = pInp ? pInp.value.trim() : '';
+  if (!user || !pass) { alert('Enter both username and password.'); return; }
+  localStorage.setItem('mc_username', user);
+  localStorage.setItem('mc_password', pass);
+  if (uInp) uInp.value = '';
+  if (pInp) pInp.value = '';
+  const status = document.getElementById('mc-cred-status');
+  if (status) status.textContent = 'Saved: ' + user;
 }
 
-function clearCvApiKey() {
-  localStorage.removeItem('cv_api_key');
-  const inp = document.getElementById('cv-api-key-input');
-  if (inp) inp.value = '';
-  const status = document.getElementById('cv-key-status');
-  if (status) status.textContent = 'Key cleared';
+function clearMcCredentials() {
+  localStorage.removeItem('mc_username');
+  localStorage.removeItem('mc_password');
+  const uInp = document.getElementById('mc-username-input');
+  const pInp = document.getElementById('mc-password-input');
+  if (uInp) uInp.value = '';
+  if (pInp) pInp.value = '';
+  const status = document.getElementById('mc-cred-status');
+  if (status) status.textContent = 'Credentials cleared';
 }
 
-function saveCvPrefs() {
-  const chk = document.getElementById('cv-auto-enrich');
-  localStorage.setItem('cv_auto_enrich', chk && chk.checked ? 'true' : 'false');
+function saveMcPrefs() {
+  const chk = document.getElementById('mc-auto-enrich');
+  localStorage.setItem('mc_auto_enrich', chk && chk.checked ? 'true' : 'false');
 }
 
 function closeSettings() {
