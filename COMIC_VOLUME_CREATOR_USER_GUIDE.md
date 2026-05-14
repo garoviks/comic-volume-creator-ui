@@ -748,10 +748,17 @@ A: Just file count. Y=4–6 (good size), S=<4 (small), M=>6 (large, consider spl
 
 ## Version
 
-**Comic Volume Creator v1.5**
+**Comic Volume Creator v1.6**
 - Last updated: 2026-05-13 14:00
-- Server: comic_volume_creator_server_v15.py (port 8015)
-- UI: comic_volume_creator_v15.html
+- Server: comic_volume_creator_server_v16.py (port 8016)
+- UI: comic_volume_creator_v16.html
+
+### v1.6 Changes (2026-05-13)
+- ComicVine API integration: auto-embeds ComicInfo.xml inside each created CBZ with series metadata (publisher, year, summary)
+- Settings panel: API key input + auto-enrich toggle (both persist in localStorage)
+- Fallback: filename-only ComicInfo.xml (series name, volume/issue numbers) written when ComicVine is unavailable or key not set
+- Session-level result cache: same series name reuses cached ComicVine results within one session (respects 200 req/hour rate limit)
+- New server endpoint: POST /api/comicvine-search for manual series lookup
 
 ### v1.5 Changes (2026-05-13 10:30)
 - Bulk split support: "Create Selected CBZs" detects split assignments and creates multiple CBZs per row instead of one merged file

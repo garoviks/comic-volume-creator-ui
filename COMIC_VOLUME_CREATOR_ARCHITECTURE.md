@@ -1,6 +1,6 @@
 # Comic Volume Creator — Architecture
 
-**Current version: v1.5**
+**Current version: v1.6**
 
 ## System Overview
 
@@ -10,7 +10,7 @@ Comic Volume Creator is a **client-server web application** for batch processing
 ┌─────────────────────┐
 │   User Browser      │
 │ (comic_volume_      │
-│  creator_v15.html)  │
+│  creator_v16.html)  │
 │                     │
 │                     │
 │  • UI Components    │
@@ -24,12 +24,13 @@ Comic Volume Creator is a **client-server web application** for batch processing
 ┌──────────▼──────────────────┐
 │ Python HTTP Server          │
 │ (comic_volume_creator_      │
-│  server_v15.py, port 8015)  │
+│  server_v16.py, port 8016)  │
 │                             │
-│  POST /api/scan         ◄──┼──► Filesystem scan + auto-logic
-│  POST /api/create       ◄──┼──► CBZ merge (unrar, unzip, zip)
-│  POST /api/exclusions   ◄──┼──► Read/write .comic_exclusions.md
-│  GET  /index.html       ◄──┼──► Serve HTML
+│  POST /api/scan             ◄──► Filesystem scan + auto-logic
+│  POST /api/create           ◄──► CBZ merge + ComicInfo.xml inject
+│  POST /api/comicvine-search ◄──► ComicVine series lookup
+│  POST /api/exclusions       ◄──► Read/write .comic_exclusions.md
+│  GET  /index.html           ◄──► Serve HTML
 │                             │
 │  • JSON API                 │
 │  • Path validation          │
@@ -165,7 +166,7 @@ Browser: doConfirmedCreate() or createSplitVolumes()
 
 ### Backend Components
 
-#### 1. **comic_volume_creator_server_v15.py** (v1.5)
+#### 1. **comic_volume_creator_server_v16.py** (v1.6)
 
 **Utility Functions:**
 - `is_volume(name)` — detect if filename is already a volume

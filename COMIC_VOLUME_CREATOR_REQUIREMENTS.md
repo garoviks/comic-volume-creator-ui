@@ -1,6 +1,6 @@
 # Comic Volume Creator — Requirements
 
-**Current version: v1.4**
+**Current version: v1.6**
 
 ## Overview
 

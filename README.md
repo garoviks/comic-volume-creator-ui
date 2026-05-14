@@ -29,16 +29,17 @@ cd /home/nesha/scripts/comic_volume_creator
 python3 comic_volume_creator_server.py
 ```
 
-**v1.5 (bulk split, port 8015):**
+**v1.6 (ComicVine metadata, port 8016):**
 ```bash
 cd /home/nesha/scripts/comic_volume_creator
-python3 comic_volume_creator_server_v15.py
+python3 comic_volume_creator_server_v16.py
 ```
 
 ### 3. Open in Browser
 
 - v1.2: `http://localhost:8765/`
 - v1.5: `http://localhost:8015/`
+- v1.6: `http://localhost:8016/`
 
 ## Files
 
@@ -47,8 +48,11 @@ python3 comic_volume_creator_server_v15.py
 | `comic_volume_creator_server.py` | Backend server v1.2 (port 8765) |
 | `comic_volume_creator_server_v13.py` | Backend server v1.3–v1.4 (port 8003) |
 | `comic_volume_creator_server_v15.py` | Backend server v1.5 (port 8015) |
+| `comic_volume_creator_server_v16.py` | Backend server v1.6 (port 8016) |
+| `comicvine_client.py` | ComicVine API client (used by v1.6 server) |
 | `comic_volume_creator_v13.html` | Web UI v1.3–v1.4 (HTML/CSS/JS) |
 | `comic_volume_creator_v15.html` | Web UI v1.5 (HTML/CSS/JS) |
+| `comic_volume_creator_v16.html` | Web UI v1.6 (HTML/CSS/JS) |
 | `split_volumes_mockup.html` | Split volumes feature mockup (reference) |
 | `COMIC_VOLUME_CREATOR_REQUIREMENTS.md` | Functional & non-functional requirements |
 | `COMIC_VOLUME_CREATOR_ARCHITECTURE.md` | System design, APIs, components |
@@ -94,6 +98,12 @@ python3 comic_volume_creator_server_v15.py
 ✅ Issue numbers 10+ without zero-padding now correctly detected and grouped  
 ✅ Browser tab title cleaned up (removed "Mockup")  
 
+**v1.6 additions:**  
+✅ ComicVine API integration: auto-embeds ComicInfo.xml with series metadata after CBZ creation  
+✅ Settings panel: API key input + auto-enrich toggle  
+✅ Fallback: filename-only ComicInfo.xml written even when ComicVine is unavailable  
+✅ `/api/comicvine-search` endpoint for manual series lookup  
+
 ## Workflow
 
 1. Enter source folder path
@@ -123,6 +133,6 @@ Click the **"❓ Help"** button in the app for in-app help and FAQs.
 
 **Location**: `/home/nesha/scripts/comic_volume_creator/`
 
-**Version**: v1.5
+**Version**: v1.6
 
 **Last Updated**: 2026-05-13 14:00
