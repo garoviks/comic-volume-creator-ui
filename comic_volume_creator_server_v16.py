@@ -1,5 +1,5 @@
 """
-Comic Volume Creator Server v1.6
+Comic Volume Creator Server v1.7
 Serves comic_volume_creator_v16.html and provides JSON API endpoints.
 
 Usage:
@@ -77,7 +77,7 @@ def is_numbered_issue(filename: str) -> bool:
 def extract_issue_number(filename: str) -> int | None:
     """Extract the issue number from a filename. Returns int or None."""
     # Match patterns like: 001, #001, (001), 01, #01, etc.
-    m = re.search(r'(?:#|\()?(\d{1,3})(?:\)|(?:\s*\(of|\s|$))', filename)
+    m = re.search(r'(?:#|\()?(\d{1,3})(?:\)|\(|(?:\s*\(of|\s|$))', filename)
     if m:
         try:
             return int(m.group(1))
@@ -98,6 +98,22 @@ def extract_zero_padded_issue(filename: str) -> int | None:
         except (ValueError, IndexError):
             return None
     return None
+
+
+_LOWERCASE_WORDS = {'a', 'an', 'the', 'of', 'in', 'on', 'at', 'to', 'and', 'or'}
+
+def title_case(s: str) -> str:
+    words = s.split()
+    return ' '.join(
+        w.lower() if i > 0 and w.lower() in _LOWERCASE_WORDS else w.capitalize()
+        for i, w in enumerate(words)
+    )
+
+def normalize_series(series: str) -> str:
+    """Collapse whitespace, strip the word 'the', apply title case."""
+    s = re.sub(r'\s+', ' ', series).strip()
+    s = re.sub(r'\bthe\b\s*', '', s, flags=re.IGNORECASE).strip()
+    return title_case(s)
 
 
 def get_next_volume_number(folder_path: str, series: str) -> int:
@@ -182,7 +198,7 @@ def scan_single_folder(folder_path: str) -> dict[str, dict]:
             continue
         if not is_numbered_issue(name):
             continue
-        series = extract_series(name)
+        series = normalize_series(extract_series(name))
         year   = extract_year(name)
         key = series.lower()
         if key not in groups:
@@ -452,12 +468,12 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
             files = sorted(data['files'], key=lambda f: (extract_issue_number(f) or extract_zero_padded_issue(f) or 0, f.lower()))
             n = len(files)
             flag = 'M' if n > 6 else ('S' if n < 4 else 'Y')
-            highest_year = str(max(int(y) for y in data['years'])) if data['years'] else None
+            earliest_year = str(min(int(y) for y in data['years'])) if data['years'] else None
             next_vol = get_next_volume_number(folder_path, series)
             vol_str  = f'v{next_vol:02d}'
             outname  = f'{series} {vol_str}'
-            if highest_year:
-                outname += f' ({highest_year})'
+            if earliest_year:
+                outname += f' ({earliest_year})'
             # Determine status
             cbz_final = os.path.join(folder_path, outname + '.cbz')
             if os.path.exists(cbz_final):
@@ -584,16 +600,16 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
             ok(f'{len(extracted)} file(s) extracted')
 
         log.append(f'\n[3/6] Zipping into {cbz_name}')
-        info(f'Command: zip -r "{cbz_in_working}" .')
-        result = subprocess.run(
-            ['zip', '-r', cbz_in_working, '.'],
-            capture_output=True, text=True, cwd=working_dir
-        )
-        if result.returncode != 0:
-            err(f'zip failed (exit code {result.returncode})')
-            if result.stderr.strip():
-                err(result.stderr.strip())
-            raise RuntimeError('zip failed')
+        info('Building archive in explicit issue order')
+        with zipfile.ZipFile(cbz_in_working, 'w', zipfile.ZIP_STORED) as zf:
+            for idx, filename in enumerate(sorted_files, 1):
+                stem = os.path.splitext(filename)[0]
+                subdir_name = f'{str(idx).zfill(pad)}_{stem}'
+                subdir_path = os.path.join(working_dir, subdir_name)
+                for page_fname in sorted(os.listdir(subdir_path)):
+                    full_path = os.path.join(subdir_path, page_fname)
+                    if os.path.isfile(full_path):
+                        zf.write(full_path, arcname=f'{subdir_name}/{page_fname}')
         cbz_bytes = os.path.getsize(cbz_in_working)
         size_str  = (f'{cbz_bytes/1024**3:.2f} GB' if cbz_bytes >= 1024**3
                      else f'{cbz_bytes/1024**2:.1f} MB' if cbz_bytes >= 1024**2
@@ -939,11 +955,11 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Comic Volume Creator server v1.6')
+    parser = argparse.ArgumentParser(description='Comic Volume Creator server v1.7')
     parser.add_argument('--port', type=int, default=8016)
     args = parser.parse_args()
 
-    print(f'Comic Volume Creator v1.6 — http://localhost:{args.port}/')
+    print(f'Comic Volume Creator v1.7 — http://localhost:{args.port}/')
     print(f'Serving: {HTML_FILE}')
     print('Press Ctrl-C to stop.\n')
 
