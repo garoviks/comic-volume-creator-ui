@@ -223,9 +223,9 @@ EXCLUSIONS_FILE = '.comic_exclusions.md'
 
 
 def read_exclusions(root_path: str) -> dict[str, list[str]]:
-    """Read exclusions from .comic_exclusions.md. Returns {'always': [...], 'temp': [...]}."""
+    """Read exclusions from .comic_exclusions.md. Returns {'always': [...], 'temp': [...], 'skipped': [...]}."""
     path = os.path.join(root_path, EXCLUSIONS_FILE)
-    result = {'always': [], 'temp': []}
+    result = {'always': [], 'temp': [], 'skipped': []}
     try:
         with open(path, 'r', encoding='utf-8') as f:
             current_section = None
@@ -235,6 +235,8 @@ def read_exclusions(root_path: str) -> dict[str, list[str]]:
                     current_section = 'always'
                 elif line.strip() == '## Temp Exclude':
                     current_section = 'temp'
+                elif line.strip() == '## Skipped Folders':
+                    current_section = 'skipped'
                 elif line.startswith('## '):
                     current_section = None
                 elif current_section and line.startswith('- '):
@@ -246,14 +248,17 @@ def read_exclusions(root_path: str) -> dict[str, list[str]]:
     return result
 
 
-def write_exclusions(root_path: str, always: list[str], temp: list[str]) -> None:
-    """Write always and temp exclusion lists to .comic_exclusions.md."""
+def write_exclusions(root_path: str, always: list[str], temp: list[str], skipped: list[str] | None = None) -> None:
+    """Write exclusion lists to .comic_exclusions.md."""
     filepath = os.path.join(root_path, EXCLUSIONS_FILE)
     lines = ['# Comic Volume Creator — Exclusions', '', '## Always Exclude']
     for p in sorted(set(always)):
         lines.append(f'- {p}')
     lines += ['', '## Temp Exclude']
     for p in sorted(set(temp)):
+        lines.append(f'- {p}')
+    lines += ['', '## Skipped Folders']
+    for p in sorted(set(skipped or [])):
         lines.append(f'- {p}')
     with open(filepath, 'w', encoding='utf-8') as f:
         f.write('\n'.join(lines) + '\n')
@@ -539,6 +544,12 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
             row['status'] = 'exclude'
         elif folder_key in temp_set:
             row['status'] = 'temp_exclude'
+
+    # Persist skipped folder names to exclusions file
+    skipped_names = [os.path.basename(s['path']) for s in skipped]
+    if skipped_names != sorted(set(exclusions.get('skipped', []))):
+        write_exclusions(root_path, exclusions['always'], exclusions['temp'], skipped_names)
+        exclusions['skipped'] = skipped_names
 
     return results, skipped, exclusions
 
@@ -905,11 +916,11 @@ class Handler(BaseHTTPRequestHandler):
                 elif excl_type == 'always' and folder not in exclusions['always']:
                     exclusions['always'].append(folder)
                     exclusions['temp'] = [f for f in exclusions['temp'] if f != folder]
-                write_exclusions(root, exclusions['always'], exclusions['temp'])
+                write_exclusions(root, exclusions['always'], exclusions['temp'], exclusions.get('skipped'))
             elif action == 'remove':
                 exclusions['always'] = [f for f in exclusions['always'] if f != folder]
                 exclusions['temp']   = [f for f in exclusions['temp']   if f != folder]
-                write_exclusions(root, exclusions['always'], exclusions['temp'])
+                write_exclusions(root, exclusions['always'], exclusions['temp'], exclusions.get('skipped'))
             self.send_json(200, {'exclusions': exclusions})
 
         elif path == '/api/create':
