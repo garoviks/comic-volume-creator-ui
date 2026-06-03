@@ -1,30 +1,40 @@
 """
-Comic Volume Creator Server
-Serves comic_volume_creator_mockup.html and provides JSON API endpoints.
+Comic Volume Creator Server v1.7
+Serves comic_volume_creator.html and provides JSON API endpoints.
 
 Usage:
-    python3 comic_volume_creator_server.py [--port 8765]
+    python3 comic_volume_creator_server_v16.py [--port 8016]
 
 Endpoints:
-    GET  /              — serves comic_volume_creator_mockup.html
-    GET  /api/browse    — query: ?path=/folder/path
-                          returns: HTML listing of folder contents
-    POST /api/scan      — body: {"path": "/some/comics/root"}
-                          returns: {"results": [...], "skipped": [...]}
-    POST /api/create    — body: {"folder": "...", "files": [...], "outname": "..."}
-                          returns: {"success": true/false, "log": "...", "cbz_name": "..."}
+    GET  /                        — serves comic_volume_creator.html
+    GET  /api/browse              — query: ?path=/folder/path
+                                     returns: HTML listing of folder contents
+    GET  /api/exclusions          — query: ?path=/root/path
+                                     returns: {"exclusions": [...]}
+    POST /api/scan                — body: {"path": "/some/comics/root"}
+                                     returns: {"results": [...], "skipped": [...], "exclusions": [...]}
+    POST /api/create              — body: {"folder": "...", "files": [...], "outname": "...",
+                                           "mc_username": "...", "mc_password": "...",
+                                           "mc_auto_enrich": true}
+                                     returns: {"success": true/false, "log": "...", "cbz_name": "..."}
+    POST /api/exclusions          — body: {"root": "...", "action": "add"|"remove", "folder": "..."}
+                                     returns: {"exclusions": [...]}
+    POST /api/metron-search       — body: {"series_name": "...", "username": "...", "password": "..."}
+                                     returns: {"results": [...]}
 """
 
 import os
 import re
 import json
 import shutil
+import zipfile
 import subprocess
 import argparse
+import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-HTML_FILE  = os.path.join(SCRIPT_DIR, 'comic_volume_creator_mockup.html')
+HTML_FILE  = os.path.join(SCRIPT_DIR, 'comic_volume_creator.html')
 
 COMIC_EXTS = {'.cbz', '.cbr'}
 
@@ -43,11 +53,11 @@ def extract_series(filename: str) -> str:
     """Strip issue number and everything after it to get bare series name."""
     name = re.sub(r'\.(cbz|cbr)$', '', filename, flags=re.IGNORECASE)
     # action_explorer approach: handles (001) parenthesised numbers and #001 hash prefix
-    m = re.match(r'^(.*?)(?:\s+(?:#?\d+|\(\d{1,3}\))(?:\s*\(of\s*\d+\))?)', name, re.IGNORECASE)
+    m = re.match(r'^(.*?)(?:\s+(?:#\d+|0\d+|\d{2,}|\(\d{1,3}\))(?:\s*\(of\s*\d+\))?)', name, re.IGNORECASE)
     if m and m.group(1).strip():
         return m.group(1).strip()
-    # fallback: scan_comics approach
-    result = re.sub(r'(\s|#)(0{1,2})?\d.*', '', name, flags=re.IGNORECASE).strip()
+    # fallback: require zero-padded number to avoid cutting titles with bare digits
+    result = re.sub(r'(\s|#)0\d.*', '', name, flags=re.IGNORECASE).strip()
     return result or name
 
 
@@ -60,19 +70,50 @@ def is_numbered_issue(filename: str) -> bool:
     """True if filename looks like an individual numbered issue (not an existing volume)."""
     if is_volume(filename):
         return False
-    return bool(re.search(r'0\d|00\d', filename))
+    # Match zero-padded (001, 02) or bare two-digit issue numbers (10, 11 …) in context
+    return bool(re.search(r'0\d|00\d|\s\d{2}[\s(]', filename))
 
 
 def extract_issue_number(filename: str) -> int | None:
     """Extract the issue number from a filename. Returns int or None."""
     # Match patterns like: 001, #001, (001), 01, #01, etc.
-    m = re.search(r'(?:#|\()?(\d{1,3})(?:\)|(?:\s*\(of|\s|$))', filename)
+    m = re.search(r'(?:#|\()?(\d{1,3})(?:\)|\(|(?:\s*\(of|\s|$))', filename)
     if m:
         try:
             return int(m.group(1))
         except (ValueError, IndexError):
             return None
     return None
+
+
+def extract_zero_padded_issue(filename: str) -> int | None:
+    """Extract only zero-padded issue numbers (01, 001, 023, etc.).
+    Avoids picking up stray numbers from series titles like 'Season 2' or '100 Bullets'.
+    Used in auto-logic conditions C and D.
+    """
+    m = re.search(r'(?:^|[\s#(])(0\d{1,2})(?!\d)', filename)
+    if m:
+        try:
+            return int(m.group(1))
+        except (ValueError, IndexError):
+            return None
+    return None
+
+
+_LOWERCASE_WORDS = {'a', 'an', 'the', 'of', 'in', 'on', 'at', 'to', 'and', 'or'}
+
+def title_case(s: str) -> str:
+    words = s.split()
+    return ' '.join(
+        w.lower() if i > 0 and w.lower() in _LOWERCASE_WORDS else w.capitalize()
+        for i, w in enumerate(words)
+    )
+
+def normalize_series(series: str) -> str:
+    """Collapse whitespace, strip the word 'the', apply title case."""
+    s = re.sub(r'\s+', ' ', series).strip()
+    s = re.sub(r'\bthe\b\s*', '', s, flags=re.IGNORECASE).strip()
+    return title_case(s)
 
 
 def get_next_volume_number(folder_path: str, series: str) -> int:
@@ -151,13 +192,13 @@ def scan_single_folder(folder_path: str) -> dict[str, dict]:
     except OSError:
         return groups
 
-    for entry in sorted(entries, key=lambda e: e.name):
+    for entry in sorted(entries, key=lambda e: e.name.lower()):
         name = entry.name
         if os.path.splitext(name)[1].lower() not in COMIC_EXTS:
             continue
         if not is_numbered_issue(name):
             continue
-        series = extract_series(name)
+        series = normalize_series(extract_series(name))
         year   = extract_year(name)
         key = series.lower()
         if key not in groups:
@@ -176,6 +217,261 @@ def has_subdirs(path: str) -> bool:
         return False
 
 
+# ── Exclusions file (per scan-root) ─────────────────────────────────────────
+
+EXCLUSIONS_FILE = '.comic_exclusions.md'
+
+
+def read_exclusions(root_path: str) -> dict[str, list[str]]:
+    """Read exclusions from .comic_exclusions.md. Returns {'always': [...], 'temp': [...], 'skipped': [...]}."""
+    path = os.path.join(root_path, EXCLUSIONS_FILE)
+    result = {'always': [], 'temp': [], 'skipped': []}
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            current_section = None
+            for line in f:
+                line = line.rstrip()
+                if line.strip() == '## Always Exclude':
+                    current_section = 'always'
+                elif line.strip() == '## Temp Exclude':
+                    current_section = 'temp'
+                elif line.strip() == '## Skipped Folders':
+                    current_section = 'skipped'
+                elif line.startswith('## '):
+                    current_section = None
+                elif current_section and line.startswith('- '):
+                    folder = line[2:].strip()
+                    if folder:
+                        result[current_section].append(folder)
+    except FileNotFoundError:
+        pass
+    return result
+
+
+def write_exclusions(root_path: str, always: list[str], temp: list[str], skipped: list[str] | None = None) -> None:
+    """Write exclusion lists to .comic_exclusions.md."""
+    filepath = os.path.join(root_path, EXCLUSIONS_FILE)
+    lines = ['# Comic Volume Creator — Exclusions', '', '## Always Exclude']
+    for p in sorted(set(always)):
+        lines.append(f'- {p}')
+    lines += ['', '## Temp Exclude']
+    for p in sorted(set(temp)):
+        lines.append(f'- {p}')
+    lines += ['', '## Skipped Folders']
+    for p in sorted(set(skipped or [])):
+        lines.append(f'- {p}')
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
+
+
+# ── Auto-logic (conditions A–D) ─────────────────────────────────────────────
+
+def _has_current_year(files: list[str]) -> bool:
+    current_year = str(datetime.datetime.now().year)
+    return any(f'({current_year})' in fname for fname in files)
+
+
+def _of_n_total(files: list[str]) -> int | None:
+    """Return the total N from the first (X of N) or X (of N) pattern found, or None."""
+    for fname in files:
+        m = re.search(r'\((\d+)\s+of\s+(\d+)\)', fname, re.IGNORECASE)
+        if m:
+            return int(m.group(2))
+        m = re.search(r'\d+\s+\(of\s+(\d+)\)', fname, re.IGNORECASE)
+        if m:
+            return int(m.group(1))
+    return None
+
+
+def _check_condition_a(files: list[str]) -> bool:
+    """Temp.exclude: current year AND series incomplete per (of N) AND no gap (missing tail only)."""
+    if not _has_current_year(files):
+        return False
+    total = _of_n_total(files)
+    if total is None or len(files) >= total:
+        return False
+    issue_nums = sorted(set(n for n in (extract_zero_padded_issue(f) for f in files) if n is not None))
+    if not issue_nums:
+        return True  # Can't determine sequence — stay temp_exclude
+    return _is_consecutive(issue_nums)
+
+
+def _check_condition_a_gap(files: list[str]) -> bool:
+    """Incomplete: current year AND series incomplete per (of N) AND gap in the middle."""
+    if not _has_current_year(files):
+        return False
+    total = _of_n_total(files)
+    if total is None or len(files) >= total:
+        return False
+    issue_nums = sorted(set(n for n in (extract_zero_padded_issue(f) for f in files) if n is not None))
+    if not issue_nums:
+        return False
+    return not _is_consecutive(issue_nums)
+
+
+def _check_condition_a2(files: list[str]) -> bool:
+    """Incomplete: past year AND series is incomplete per (X of N) pattern."""
+    if _has_current_year(files):
+        return False
+    total = _of_n_total(files)
+    if total is None:
+        return False
+    return len(files) < total
+
+
+def _check_condition_b(files: list[str], folder_path: str, series: str, next_vol: int) -> bool:
+    """Temp.exclude: current year AND prev volume exists AND available < expected volume size."""
+    if next_vol <= 1:
+        return False
+    if not _has_current_year(files):
+        return False
+    issue_nums = sorted(n for n in (extract_issue_number(f) for f in files) if n is not None)
+    if not issue_nums:
+        return False
+    first_issue = issue_nums[0]
+    expected_vol_size = first_issue - 1
+    if expected_vol_size <= 0:
+        return False
+    return len(files) < expected_vol_size
+
+
+def _check_condition_c(files: list[str], next_vol: int) -> bool:
+    """Incomplete: any gap in issue sequence.
+    Only applied when no previous volume exists (next_vol == 1).
+    When a previous volume exists, missing earlier issues are expected to be in it.
+    Uses zero-padded extractor to avoid picking up stray numbers from series titles.
+    """
+    if next_vol > 1:
+        return False
+    issue_nums = sorted(set(n for n in (extract_zero_padded_issue(f) for f in files) if n is not None))
+    if len(issue_nums) < 1:
+        return False
+    if issue_nums[0] > 1:
+        return True
+    for i in range(len(issue_nums) - 1):
+        if issue_nums[i + 1] - issue_nums[i] > 1:
+            return True
+    return False
+
+
+def _check_condition_d(files: list[str], highest_year: str | None) -> bool:
+    """Incomplete (soft): past year AND atypical count (3 or 5) AND not consecutive from 001.
+    Consecutive-from-001 series are likely complete mini-series, not missing issues.
+    Uses zero-padded extractor to avoid picking up stray numbers from series titles.
+    """
+    if not highest_year:
+        return False
+    current_year = datetime.datetime.now().year
+    if int(highest_year) >= current_year:
+        return False
+    if len(files) not in (3, 5):
+        return False
+    # Don't flag if issues are consecutive starting from 001
+    issue_nums = sorted(set(n for n in (extract_zero_padded_issue(f) for f in files) if n is not None))
+    if not issue_nums:
+        return False
+    if issue_nums[0] == 1 and all(issue_nums[i+1] - issue_nums[i] == 1 for i in range(len(issue_nums)-1)):
+        return False
+    return True
+
+
+def _check_condition_e(files: list[str], next_vol: int) -> bool:
+    """Temp.exclude: current year AND fewer than 4 files AND no (of N) completion indicator.
+    Catches ongoing current-year series with too few issues to form a volume yet.
+    Only when no previous volume exists (next_vol == 1).
+    """
+    if next_vol > 1:
+        return False
+    if not _has_current_year(files):
+        return False
+    if len(files) >= 4:
+        return False
+    for fname in files:
+        if re.search(r'\(of\s+\d+\)', fname, re.IGNORECASE):
+            return False
+    return True
+
+
+def _is_consecutive(nums: list[int]) -> bool:
+    """Return True if sorted list of ints has no gaps."""
+    return all(nums[i+1] - nums[i] == 1 for i in range(len(nums) - 1))
+
+
+def _check_auto_ready(files: list[str], next_vol: int, highest_year: str | None) -> bool:
+    """Return True if confident the series is complete and ready to archive.
+
+    Criterion 1: explicit (N of N) completion marker in any filename.
+    Criterion 2: past year + consecutive sequence starting from 001.
+    Criterion 3: past year + typical volume size (4 or 6) + consecutive sequence.
+    Criterion 4: previous volume exists + consecutive sequence + not current year.
+    """
+    current_year = datetime.datetime.now().year
+
+    # Bail out if (of N) pattern explicitly shows we don't have all issues
+    of_n = _of_n_total(files)
+    if of_n is not None and len(files) < of_n:
+        return False
+
+    # Criterion 1 — any file has (X of N) and we have all N issues
+    for fname in files:
+        m = re.search(r'\((\d+)\s+of\s+(\d+)\)', fname, re.IGNORECASE)
+        if not m:
+            m = re.search(r'(\d+)\s+\(of\s+(\d+)\)', fname, re.IGNORECASE)
+        if m:
+            total = int(m.group(2))
+            if total > 0 and len(files) == total:
+                return True
+
+    past_year = highest_year is not None and int(highest_year) < current_year
+    issue_nums = sorted(set(n for n in (extract_zero_padded_issue(f) for f in files) if n is not None))
+
+    if len(issue_nums) >= 2:
+        consecutive = _is_consecutive(issue_nums)
+
+        # Criterion 2 — past year + consecutive from 001 + at least 4 files
+        if past_year and consecutive and issue_nums[0] == 1 and len(files) >= 4:
+            return True
+
+        # Criterion 3 — past year + standard volume size + consecutive
+        if past_year and len(files) in (4, 6) and consecutive:
+            return True
+
+        # Criterion 4 — previous volume exists + consecutive + not current year + at least 4 files
+        if next_vol > 1 and past_year and consecutive and len(files) >= 4:
+            return True
+
+    return False
+
+
+def apply_auto_logic(results: list[dict]) -> None:
+    """Run conditions A–E then Auto.Ready on scan results, updating status in-place."""
+    for row in results:
+        if row['status'] != 'ready':
+            continue
+        files = row['files']
+        folder = row['folder']
+        series = row['series']
+        next_vol = get_next_volume_number(folder, series)
+        highest_year = str(max(int(y) for y in row.get('years_set', []))) if row.get('years_set') else None
+
+        if _check_condition_a(files):
+            row['status'] = 'temp_exclude'
+        elif _check_condition_a_gap(files):
+            row['status'] = 'incomplete'
+        elif _check_condition_a2(files):
+            row['status'] = 'incomplete'
+        elif _check_condition_b(files, folder, series, next_vol):
+            row['status'] = 'temp_exclude'
+        elif _check_condition_c(files, next_vol):
+            row['status'] = 'incomplete'
+        elif _check_condition_d(files, highest_year):
+            row['status'] = 'incomplete'
+        elif _check_condition_e(files, next_vol):
+            row['status'] = 'temp_exclude'
+        elif _check_auto_ready(files, next_vol, highest_year):
+            row['status'] = 'auto_ready'
+
+
 def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
     """
     Scan root + one level of subfolders.
@@ -192,15 +488,15 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
         groups = scan_single_folder(folder_path)
         for key, data in sorted(groups.items()):
             series = data['display_series']
-            files = sorted(data['files'])
+            files = sorted(data['files'], key=lambda f: (extract_issue_number(f) or extract_zero_padded_issue(f) or 0, f.lower()))
             n = len(files)
             flag = 'M' if n > 6 else ('S' if n < 4 else 'Y')
-            highest_year = str(max(int(y) for y in data['years'])) if data['years'] else None
+            earliest_year = str(min(int(y) for y in data['years'])) if data['years'] else None
             next_vol = get_next_volume_number(folder_path, series)
             vol_str  = f'v{next_vol:02d}'
             outname  = f'{series} {vol_str}'
-            if highest_year:
-                outname += f' ({highest_year})'
+            if earliest_year:
+                outname += f' ({earliest_year})'
             # Determine status
             cbz_final = os.path.join(folder_path, outname + '.cbz')
             if os.path.exists(cbz_final):
@@ -222,14 +518,15 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
                     file_sizes[fname] = 0
 
             results.append({
-                'id':     row_id,
-                'folder': folder_path,
-                'series': series,
-                'files':  files,
+                'id':       row_id,
+                'folder':   folder_path,
+                'series':   series,
+                'files':    files,
                 'file_sizes': file_sizes,
-                'flag':   flag,
-                'status': status,
-                'outname': outname,
+                'flag':     flag,
+                'status':   status,
+                'outname':  outname,
+                'years_set': list(data['years']),
             })
             row_id += 1
 
@@ -252,7 +549,27 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
     except OSError:
         pass
 
-    return results, skipped
+    # Apply auto-logic (conditions A–D)
+    apply_auto_logic(results)
+
+    # Apply exclusions from file (strip folder paths for comparison to handle trailing spaces)
+    exclusions = read_exclusions(root_path)
+    always_set = set(p.strip() for p in exclusions['always'])
+    temp_set   = set(p.strip() for p in exclusions['temp'])
+    for row in results:
+        folder_key = row['folder'].strip()
+        if folder_key in always_set:
+            row['status'] = 'exclude'
+        elif folder_key in temp_set:
+            row['status'] = 'temp_exclude'
+
+    # Persist skipped folder names to exclusions file
+    skipped_names = [os.path.basename(s['path']) for s in skipped]
+    if skipped_names != sorted(set(exclusions.get('skipped', []))):
+        write_exclusions(root_path, exclusions['always'], exclusions['temp'], skipped_names)
+        exclusions['skipped'] = skipped_names
+
+    return results, skipped, exclusions
 
 
 # ── CBZ creation (from action_explorer_v12.py) ──────────────────────────────
@@ -279,11 +596,13 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
         ok(f'Created: {working_dir}')
 
         log.append(f'\n[2/6] Extracting {len(files)} file(s)')
-        for filename in sorted(files):
+        sorted_files = sorted(files, key=lambda f: (extract_issue_number(f) or extract_zero_padded_issue(f) or 0, f.lower()))
+        pad = len(str(len(sorted_files)))
+        for idx, filename in enumerate(sorted_files, 1):
             src  = os.path.join(abs_path, filename)
             stem = os.path.splitext(filename)[0]
             ext  = os.path.splitext(filename)[1].lower()
-            subdir = os.path.join(working_dir, stem)
+            subdir = os.path.join(working_dir, f'{str(idx).zfill(pad)}_{stem}')
             os.makedirs(subdir)
             log.append(f'\n  → {filename}')
             info(f'Subfolder: {stem}/')
@@ -295,6 +614,12 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
                 info('Tool: unzip')
             info('Command: ' + ' '.join(cmd))
             result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode != 0 and ext in ('.cbr', '.rar'):
+                # Some .cbr files are actually ZIP archives — fall back to unzip
+                info('unrar failed, retrying with unzip (file may be ZIP-format .cbr)')
+                cmd = ['unzip', '-o', '-q', src, '-d', subdir]
+                info('Tool: unzip (fallback)')
+                result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode != 0:
                 err(f'Extraction failed (exit code {result.returncode})')
                 if result.stderr.strip():
@@ -304,16 +629,16 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
             ok(f'{len(extracted)} file(s) extracted')
 
         log.append(f'\n[3/6] Zipping into {cbz_name}')
-        info(f'Command: zip -r "{cbz_in_working}" .')
-        result = subprocess.run(
-            ['zip', '-r', cbz_in_working, '.'],
-            capture_output=True, text=True, cwd=working_dir
-        )
-        if result.returncode != 0:
-            err(f'zip failed (exit code {result.returncode})')
-            if result.stderr.strip():
-                err(result.stderr.strip())
-            raise RuntimeError('zip failed')
+        info('Building archive in explicit issue order')
+        with zipfile.ZipFile(cbz_in_working, 'w', zipfile.ZIP_STORED) as zf:
+            for idx, filename in enumerate(sorted_files, 1):
+                stem = os.path.splitext(filename)[0]
+                subdir_name = f'{str(idx).zfill(pad)}_{stem}'
+                subdir_path = os.path.join(working_dir, subdir_name)
+                for page_fname in sorted(os.listdir(subdir_path)):
+                    full_path = os.path.join(subdir_path, page_fname)
+                    if os.path.isfile(full_path):
+                        zf.write(full_path, arcname=f'{subdir_name}/{page_fname}')
         cbz_bytes = os.path.getsize(cbz_in_working)
         size_str  = (f'{cbz_bytes/1024**3:.2f} GB' if cbz_bytes >= 1024**3
                      else f'{cbz_bytes/1024**2:.1f} MB' if cbz_bytes >= 1024**2
@@ -356,6 +681,63 @@ def create_cbz_direct(abs_path: str, files: list[str], outname: str) -> tuple[bo
             except Exception as ce:
                 log.append(f'  ✖ Could not remove working folder: {ce}')
         return False, '\n'.join(log)
+
+
+# ── Metron metadata enrichment ───────────────────────────────────────────────
+
+def inject_comicinfo_into_cbz(cbz_path: str, xml_str: str) -> None:
+    """Add or replace ComicInfo.xml at the root of a CBZ archive."""
+    tmp = cbz_path + '.tmp'
+    try:
+        with zipfile.ZipFile(cbz_path, 'r') as src, \
+             zipfile.ZipFile(tmp, 'w', zipfile.ZIP_DEFLATED) as dst:
+            for item in src.infolist():
+                if item.filename != 'ComicInfo.xml':
+                    dst.writestr(item, src.read(item.filename))
+            dst.writestr('ComicInfo.xml', xml_str.encode('utf-8'))
+        os.replace(tmp, cbz_path)
+    except Exception:
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        raise
+
+
+def enrich_cbz(cbz_path: str, series_name: str, outname: str,
+               files: list, username: str, password: str) -> str:
+    """Query Metron, build ComicInfo.xml, inject into CBZ. Returns log line(s)."""
+    try:
+        import metron_client as mc
+    except ImportError:
+        return '  ⚠ metron_client.py not found — metadata skipped'
+
+    vol_match = re.search(r'\bv(\d+)\b', outname, re.IGNORECASE)
+    volume_num = int(vol_match.group(1)) if vol_match else 1
+
+    issue_nums = [extract_issue_number(f) for f in files]
+    issue_nums = [n for n in issue_nums if n is not None]
+    first_issue = min(issue_nums) if issue_nums else None
+    issue_count = len(files)
+
+    try:
+        results = mc.search_series(series_name, username, password)
+        mc_data = mc.pick_best_match(series_name, results)
+    except Exception as e:
+        xml = mc.build_comicinfo_xml(series_name, volume_num, first_issue, issue_count, None)
+        inject_comicinfo_into_cbz(cbz_path, xml)
+        return f'  ⚠ Metron error ({e}) — filename-only ComicInfo.xml injected'
+
+    xml = mc.build_comicinfo_xml(series_name, volume_num, first_issue, issue_count, mc_data)
+    inject_comicinfo_into_cbz(cbz_path, xml)
+
+    if mc_data:
+        pub = mc_data.get('publisher', '')
+        year = str(mc_data.get('year_began', ''))
+        label = mc_data['name']
+        if pub or year:
+            label += ' (' + ', '.join(x for x in [pub, year] if x) + ')'
+        return f'  · ComicInfo.xml: {label} — injected'
+    else:
+        return f'  · ComicInfo.xml: {series_name} (filename-only, no Metron match) — injected'
 
 
 # ── HTTP server ─────────────────────────────────────────────────────────────
@@ -510,6 +892,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_folder_listing(folder)
             except Exception as e:
                 self.send_error(500, f'Error: {str(e)}')
+        elif path == '/api/exclusions':
+            import urllib.parse
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            root = query.get('path', [''])[0].strip()
+            if not root or not os.path.isdir(root):
+                self.send_json(400, {'error': f'Invalid path: {root!r}'})
+                return
+            self.send_json(200, {'exclusions': read_exclusions(root)})  # returns {always, temp}
         else:
             self.send_error(404)
 
@@ -523,16 +913,42 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(400, {'error': f'Path not found or not a directory: {root!r}'})
                 return
             try:
-                results, skipped = scan_root(root)
-                self.send_json(200, {'results': results, 'skipped': skipped})
+                results, skipped, exclusions = scan_root(root)
+                self.send_json(200, {'results': results, 'skipped': skipped, 'exclusions': exclusions})
             except Exception as e:
                 self.send_json(500, {'error': str(e)})
+
+        elif path == '/api/exclusions':
+            body = self.read_json_body()
+            root   = body.get('root', '').strip()
+            action = body.get('action', '').strip()
+            folder = body.get('folder', '').strip()
+            excl_type = body.get('type', 'always').strip()  # 'always' or 'temp'
+            if not root or not os.path.isdir(root):
+                self.send_json(400, {'error': f'Invalid root: {root!r}'})
+                return
+            exclusions = read_exclusions(root)
+            if action == 'add' and folder:
+                if excl_type == 'temp' and folder not in exclusions['temp']:
+                    exclusions['temp'].append(folder)
+                elif excl_type == 'always' and folder not in exclusions['always']:
+                    exclusions['always'].append(folder)
+                    exclusions['temp'] = [f for f in exclusions['temp'] if f != folder]
+                write_exclusions(root, exclusions['always'], exclusions['temp'], exclusions.get('skipped'))
+            elif action == 'remove':
+                exclusions['always'] = [f for f in exclusions['always'] if f != folder]
+                exclusions['temp']   = [f for f in exclusions['temp']   if f != folder]
+                write_exclusions(root, exclusions['always'], exclusions['temp'], exclusions.get('skipped'))
+            self.send_json(200, {'exclusions': exclusions})
 
         elif path == '/api/create':
             body = self.read_json_body()
             folder  = body.get('folder', '')  # Don't strip - preserve exact folder path including trailing spaces
             files   = body.get('files', [])
             outname = body.get('outname', '').strip().removesuffix('.cbz')
+            username = body.get('mc_username', '').strip()
+            password = body.get('mc_password', '').strip()
+            auto_enrich = body.get('mc_auto_enrich', False)
             if not folder or not files or not outname:
                 self.send_json(400, {'error': 'Missing folder, files, or outname'})
                 return
@@ -540,19 +956,39 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(400, {'error': f'Folder not found: {folder!r}'})
                 return
             success, log = create_cbz_direct(folder, files, outname)
+            if success and auto_enrich and username and password:
+                cbz_path = os.path.join(folder, outname + '.cbz')
+                series_name = re.sub(r'\s+v\d+.*$', '', outname, flags=re.IGNORECASE).strip()
+                enrich_log = enrich_cbz(cbz_path, series_name, outname, files, username, password)
+                log += '\n' + enrich_log
             self.send_json(200 if success else 500,
                            {'success': success, 'log': log, 'cbz_name': outname + '.cbz'})
+
+        elif path == '/api/metron-search':
+            body = self.read_json_body()
+            series_name = body.get('series_name', '').strip()
+            username = body.get('username', '').strip()
+            password = body.get('password', '').strip()
+            if not series_name or not username or not password:
+                self.send_json(400, {'error': 'Missing series_name, username, or password'})
+                return
+            try:
+                import metron_client as mc
+                results = mc.search_series(series_name, username, password)
+                self.send_json(200, {'results': results})
+            except Exception as e:
+                self.send_json(500, {'error': str(e)})
 
         else:
             self.send_error(404)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Comic Volume Creator server')
-    parser.add_argument('--port', type=int, default=8765)
+    parser = argparse.ArgumentParser(description='Comic Volume Creator server v1.7')
+    parser.add_argument('--port', type=int, default=8016)
     args = parser.parse_args()
 
-    print(f'Comic Volume Creator — http://localhost:{args.port}/')
+    print(f'Comic Volume Creator v1.7 — http://localhost:{args.port}/')
     print(f'Serving: {HTML_FILE}')
     print('Press Ctrl-C to stop.\n')
 
