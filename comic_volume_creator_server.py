@@ -507,15 +507,19 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
                 status = 'single'
             else:
                 status = 'ready'
-            # Calculate file sizes
+            # Calculate file sizes and dates
             file_sizes = {}
+            file_dates = {}
             for fname in files:
                 fpath = os.path.join(folder_path, fname)
                 try:
-                    size_mb = os.path.getsize(fpath) / (1024 * 1024)
+                    st = os.stat(fpath)
+                    size_mb = st.st_size / (1024 * 1024)
                     file_sizes[fname] = round(size_mb, 1)
+                    file_dates[fname] = datetime.datetime.fromtimestamp(st.st_mtime).strftime('%d/%m/%y')
                 except OSError:
                     file_sizes[fname] = 0
+                    file_dates[fname] = ''
 
             results.append({
                 'id':       row_id,
@@ -523,6 +527,7 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
                 'series':   series,
                 'files':    files,
                 'file_sizes': file_sizes,
+                'file_dates': file_dates,
                 'flag':     flag,
                 'status':   status,
                 'outname':  outname,

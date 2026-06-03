@@ -1547,9 +1547,10 @@ function renderTable() {
       sub.className = `file-subrow ${isExp ? '' : 'hidden'}`;
       sub.dataset.parent = row.id;
       const fileSize = row.file_sizes && row.file_sizes[fname] ? `(${row.file_sizes[fname]} MB)` : '';
+      const fileDate = row.file_dates && row.file_dates[fname] ? row.file_dates[fname] : '';
       sub.innerHTML = `
         <td colspan="2"></td>
-        <td colspan="6"><span class="dim">${i+1}.</span> <span class="fname">${fname}</span> <span class="dim">${fileSize}</span></td>`;
+        <td colspan="6"><span class="dim">${i+1}.</span> <span class="fname">${fname}</span> <span class="dim">${fileSize}</span>${fileDate ? ` <span class="dim">${fileDate}</span>` : ''}</td>`;
       tbody.appendChild(sub);
     });
 
