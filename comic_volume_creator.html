@@ -2816,6 +2816,7 @@ document.addEventListener('contextmenu', function(e) {
   const tr = e.target.closest('tr.series-row');
   if (!tr) return;
   e.preventDefault();
+  e.stopPropagation();
   _ctxRowId = parseInt(tr.dataset.id);
   const row = data.find(r => r.id === _ctxRowId);
   const isExcluded = row && (row.status === 'exclude' || row.status === 'temp_exclude');
@@ -2828,8 +2829,8 @@ document.addEventListener('contextmenu', function(e) {
   menu.style.top  = Math.min(e.clientY, window.innerHeight - 120) + 'px';
 });
 
-document.addEventListener('click', () => {
-  document.getElementById('ctx-menu').style.display = 'none';
+document.addEventListener('mousedown', function(e) {
+  if (e.button === 0) document.getElementById('ctx-menu').style.display = 'none';
 });
 
 document.addEventListener('keydown', function(e) {
