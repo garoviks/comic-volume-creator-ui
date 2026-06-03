@@ -284,13 +284,29 @@ def _of_n_total(files: list[str]) -> int | None:
 
 
 def _check_condition_a(files: list[str]) -> bool:
-    """Temp.exclude: current year AND series is incomplete per (X of N) pattern."""
+    """Temp.exclude: current year AND series incomplete per (of N) AND no gap (missing tail only)."""
     if not _has_current_year(files):
         return False
     total = _of_n_total(files)
-    if total is None:
+    if total is None or len(files) >= total:
         return False
-    return len(files) < total
+    issue_nums = sorted(set(n for n in (extract_zero_padded_issue(f) for f in files) if n is not None))
+    if not issue_nums:
+        return True  # Can't determine sequence — stay temp_exclude
+    return _is_consecutive(issue_nums)
+
+
+def _check_condition_a_gap(files: list[str]) -> bool:
+    """Incomplete: current year AND series incomplete per (of N) AND gap in the middle."""
+    if not _has_current_year(files):
+        return False
+    total = _of_n_total(files)
+    if total is None or len(files) >= total:
+        return False
+    issue_nums = sorted(set(n for n in (extract_zero_padded_issue(f) for f in files) if n is not None))
+    if not issue_nums:
+        return False
+    return not _is_consecutive(issue_nums)
 
 
 def _check_condition_a2(files: list[str]) -> bool:
@@ -440,6 +456,8 @@ def apply_auto_logic(results: list[dict]) -> None:
 
         if _check_condition_a(files):
             row['status'] = 'temp_exclude'
+        elif _check_condition_a_gap(files):
+            row['status'] = 'incomplete'
         elif _check_condition_a2(files):
             row['status'] = 'incomplete'
         elif _check_condition_b(files, folder, series, next_vol):
