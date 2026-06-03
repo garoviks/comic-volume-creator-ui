@@ -530,6 +530,11 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
             })
             row_id += 1
 
+    # Read exclusions early so excluded folders are skipped before any scanning
+    exclusions = read_exclusions(root_path)
+    always_set = set(p.strip() for p in exclusions['always'])
+    temp_set   = set(p.strip() for p in exclusions['temp'])
+
     root_no_subdirs = not has_subdirs(root_path)
     if root_no_subdirs:
         process(root_path)
@@ -538,6 +543,8 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
         for entry in sorted(os.scandir(root_path), key=lambda e: e.name.lower()):
             if not entry.is_dir():
                 continue
+            if entry.path.strip() in always_set or entry.path.strip() in temp_set:
+                continue  # Excluded — skip entirely before any processing
             if has_subdirs(entry.path):
                 try:
                     sub_names = [e.name for e in os.scandir(entry.path) if e.is_dir()]
@@ -551,17 +558,6 @@ def scan_root(root_path: str) -> tuple[list[dict], list[dict]]:
 
     # Apply auto-logic (conditions A–D)
     apply_auto_logic(results)
-
-    # Apply exclusions from file (strip folder paths for comparison to handle trailing spaces)
-    exclusions = read_exclusions(root_path)
-    always_set = set(p.strip() for p in exclusions['always'])
-    temp_set   = set(p.strip() for p in exclusions['temp'])
-    for row in results:
-        folder_key = row['folder'].strip()
-        if folder_key in always_set:
-            row['status'] = 'exclude'
-        elif folder_key in temp_set:
-            row['status'] = 'temp_exclude'
 
     # Persist skipped folder names to exclusions file
     skipped_names = [os.path.basename(s['path']) for s in skipped]
